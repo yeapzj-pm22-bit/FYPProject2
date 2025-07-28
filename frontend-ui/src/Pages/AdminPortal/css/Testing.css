@@ -1,0 +1,869 @@
+body {
+  background: linear-gradient(to bottom right, #eef5ff, #ffffff);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* Section */
+.department-section {
+  padding: 2rem;
+}
+
+/* Title */
+.department-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e3a8a; /* text-blue-900 */
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* Grid layout */
+.department-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .department-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .department-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Department Card */
+.department-card {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.department-card:hover {
+  transform: scale(1.05);
+  border-color: #c7e0ff;
+  box-shadow: 0 8px 20px rgba(0, 112, 243, 0.1);
+}
+
+/* Icon */
+.department-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Name */
+.department-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+
+.doctor-selection-container {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.doctor-selection-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #1e3a8a; /* Tailwind blue-900 */
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.doctor-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .doctor-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.doctor-card {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.05);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.doctor-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 15px 25px rgba(0, 0, 0, 0.1);
+  border-color: #bfdbfe; /* Tailwind blue-200 */
+}
+
+.doctor-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.doctor-avatar {
+  width: 4rem;
+  height: 4rem;
+  background-color: #dbeafe; /* Tailwind blue-100 */
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.doctor-icon {
+  width: 2rem;
+  height: 2rem;
+  color: #2563eb; /* Tailwind blue-600 */
+}
+
+.doctor-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+
+.doctor-specialty {
+  color: #4b5563; /* Tailwind gray-600 */
+  margin-top: 0.25rem;
+}
+
+.doctor-rating {
+  display: flex;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.star-icon {
+  color: #facc15; /* Tailwind yellow-400 */
+}
+
+.rating-score {
+  font-size: 0.875rem;
+  color: #4b5563;
+  margin-left: 0.25rem;
+}
+
+.calendar-section {
+  padding: 2rem;
+}
+
+.calendar-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.calendar-container {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Header */
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.nav-btn {
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.nav-btn:hover {
+  background-color: #ebf4ff; /* Tailwind blue-50 */
+}
+
+.nav-icon {
+  width: 20px;
+  height: 20px;
+  color: #2563eb; /* Tailwind blue-600 */
+}
+
+.calendar-month {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+
+/* Weekday labels */
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.weekday {
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280; /* gray-500 */
+}
+
+/* Calendar grid */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+
+.calendar-cell {
+  aspect-ratio: 1 / 1;
+}
+
+.calendar-empty {
+  width: 100%;
+  height: 100%;
+}
+
+/* Calendar day styling */
+.calendar-day {
+  width: 100%;
+  height: 100%;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.day-past {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.day-available {
+  background-color: #d1fae5; /* green-100 */
+  color: #065f46; /* green-800 */
+}
+
+.day-available:hover {
+  background-color: #a7f3d0; /* green-200 */
+}
+
+.day-unavailable {
+  background-color: #fee2e2; /* red-100 */
+  color: #991b1b; /* red-800 */
+  cursor: not-allowed;
+}
+
+.day-selected {
+  background-color: #2563eb !important; /* blue-600 */
+  color: white !important;
+}
+
+/* Legend */
+.calendar-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-color {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+}
+
+.time-range-container {
+  background-color: #fff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.05);
+}
+
+.time-range-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e3a8a; /* blue-900 */
+  margin-bottom: 1rem;
+}
+
+.time-grid-wrapper {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .time-grid-wrapper {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.time-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.time-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1e3a8a;
+  margin-bottom: 0.75rem;
+}
+
+.time-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  max-height: 15rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+/* Time Button Styling */
+.time-slot-btn {
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  background-color: #eff6ff; /* blue-50 */
+  color: #1e3a8a;
+  transition: all 0.2s ease-in-out;
+  border: none;
+  cursor: pointer;
+}
+
+.time-slot-btn:hover {
+  background-color: #2563eb; /* blue-600 */
+  color: #fff;
+}
+
+.time-slot-btn.selected {
+  background-color: #2563eb;
+  color: #fff;
+}
+
+.time-slot-btn.disabled {
+  background-color: #f3f4f6; /* gray-100 */
+  color: #9ca3af; /* gray-400 */
+  cursor: not-allowed;
+}
+
+/* Summary Section */
+.time-summary {
+  margin-top: 1.5rem;
+  background-color: #eff6ff; /* blue-50 */
+  padding: 1rem;
+  border-radius: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.summary-info {
+  color: #1e3a8a;
+  font-weight: 500;
+}
+
+.summary-duration {
+  font-size: 0.875rem;
+  color: #2563eb; /* blue-600 */
+  margin-top: 0.25rem;
+}
+
+.btn-continue {
+  background-color: #2563eb;
+  color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease-in-out;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-continue:hover {
+  background-color: #1d4ed8; /* darker blue */
+}
+
+.appointment-details-container {
+  max-width: 50rem; /* Increased max-width for a slightly wider layout */
+  margin: 2rem auto; /* Centering with margin */
+  padding: 0 1.5rem; /* Horizontal padding */
+}
+
+/* Header Styling */
+.appointment-details-header {
+  font-size: 2.25rem; /* text-4xl */
+  font-weight: 700; /* font-bold */
+  color: #1a202c; /* text-gray-900 */
+  margin-bottom: 2.5rem; /* mb-10 */
+  text-align: center;
+}
+
+/* Card Styling */
+.appointment-details-card {
+  background-color: #ffffff;
+  border-radius: 1.5rem; /* rounded-3xl */
+  padding: 2.5rem; /* p-10 */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-xl */
+}
+
+/* Appointment Summary Section */
+.appointment-summary {
+  margin-bottom: 2.5rem; /* mb-10 */
+  padding: 1.5rem; /* p-6 */
+  background-color: #e0f2fe; /* bg-blue-50 */
+  border-radius: 0.75rem; /* rounded-xl */
+  border: 1px solid #90cdf4; /* subtle blue border */
+}
+
+.appointment-summary-title {
+  font-size: 1.25rem; /* text-xl */
+  font-weight: 600; /* font-semibold */
+  color: #1e40af; /* text-blue-800 */
+  margin-bottom: 1rem; /* mb-4 */
+}
+
+.appointment-summary-info div {
+  font-size: 1rem; /* text-base */
+  color: #2b6cb0; /* text-blue-700 */
+  line-height: 1.5; /* space-y-1 equivalent */
+}
+
+/* Form Section Labels */
+.form-label {
+  display: block;
+  font-size: 1rem; /* text-base */
+  font-weight: 500; /* font-medium */
+  color: #1a202c; /* text-gray-900 */
+  margin-bottom: 0.75rem; /* mb-3 */
+}
+
+.required-star {
+  color: #ef4444; /* text-red-500 */
+}
+
+/* Quick Select Options */
+.quick-select-info {
+  font-size: 0.875rem; /* text-sm */
+  color: #4a5568; /* text-gray-600 */
+  margin-bottom: 0.75rem; /* mb-3 */
+}
+
+.quick-select-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive grid */
+  gap: 0.75rem; /* gap-3 */
+  margin-bottom: 1.5rem; /* mb-6 */
+}
+
+.quick-select-button {
+  padding: 0.75rem 1rem; /* p-3 px-4 */
+  text-align: left;
+  font-size: 0.9375rem; /* slightly larger than text-sm for readability */
+  border-radius: 0.625rem; /* rounded-lg */
+  transition: all 0.2s ease-in-out; /* transition-colors */
+  border: 1px solid #e2e8f0; /* default border */
+  cursor: pointer;
+}
+
+.quick-select-button:not(.selected):hover {
+  background-color: #ebf8ff; /* hover:bg-blue-50 */
+  color: #2c5282; /* text-blue-800 on hover */
+  border-color: #90cdf4;
+}
+
+.quick-select-button.selected {
+  background-color: #2563eb; /* bg-blue-600 */
+  color: #ffffff; /* text-white */
+  border-color: #2563eb;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Custom Reason Input */
+.custom-reason-input {
+  width: 100%;
+  padding: 0.875rem 1.25rem; /* p-3.5 px-5 */
+  border: 1px solid #cbd5e0; /* border-gray-300 */
+  border-radius: 0.625rem; /* rounded-lg */
+  font-size: 1rem;
+  color: #4a5568;
+  transition: all 0.2s ease-in-out;
+}
+
+.custom-reason-input::placeholder {
+  color: #a0aec0; /* placeholder-gray-400 */
+}
+
+.custom-reason-input:focus {
+  outline: none;
+  border-color: #3182ce; /* focus:border-blue-500 */
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5); /* focus:ring-2 focus:ring-blue-500 */
+}
+
+/* Additional Notes Textarea */
+.additional-notes-textarea {
+  width: 100%;
+  padding: 0.875rem 1.25rem; /* p-3.5 px-5 */
+  border: 1px solid #cbd5e0; /* border-gray-300 */
+  border-radius: 0.625rem; /* rounded-lg */
+  font-size: 1rem;
+  color: #4a5568;
+  min-height: 8rem; /* Equivalent to rows={4} with typical line-height */
+  resize: vertical; /* Allow vertical resizing, not horizontal */
+  transition: all 0.2s ease-in-out;
+}
+
+.additional-notes-textarea::placeholder {
+  color: #a0aec0; /* placeholder-gray-400 */
+}
+
+.additional-notes-textarea:focus {
+  outline: none;
+  border-color: #3182ce; /* focus:border-blue-500 */
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5); /* focus:ring-2 focus:ring-blue-500 */
+}
+
+/* Confirm Button */
+.confirm-button {
+  width: 100%;
+  padding: 1rem 1.5rem; /* py-4 px-6 */
+  border-radius: 0.75rem; /* rounded-xl */
+  font-size: 1.125rem; /* text-lg */
+  font-weight: 600; /* font-semibold */
+  text-align: center;
+  transition: all 0.3s ease-in-out; /* transition-all duration-200 */
+  cursor: pointer;
+  border: none;
+}
+
+.confirm-button:not(:disabled) {
+  background-color: #2563eb; /* bg-blue-600 */
+  color: #ffffff; /* text-white */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-lg */
+}
+
+.confirm-button:not(:disabled):hover {
+  background-color: #1d4ed8; /* hover:bg-blue-700 */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* hover:shadow-xl */
+}
+
+.confirm-button:disabled {
+  background-color: #e2e8f0; /* bg-gray-200 */
+  color: #a0aec0; /* text-gray-400 */
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Container for the entire confirmation step */
+.confirmation-container {
+  max-width: 42rem; /* Equivalent to max-w-2xl */
+  margin: 2rem auto; /* Centering the container */
+  padding: 0 1.5rem; /* Horizontal padding for smaller screens */
+}
+
+/* Card styling for the confirmation details */
+.confirmation-card {
+  background-color: #ffffff;
+  border-radius: 1.5rem; /* rounded-2xl */
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* shadow-xl */
+  padding: 2.5rem; /* p-8 */
+}
+
+/* Header section (check icon, title, message) */
+.confirmation-header {
+  text-align: center;
+  margin-bottom: 2rem; /* mb-6 */
+}
+
+/* Checkmark icon container */
+.confirmation-icon-wrapper {
+  width: 5rem; /* w-20 */
+  height: 5rem; /* h-20 */
+  background-color: #d1fae5; /* bg-green-100 */
+  border-radius: 9999px; /* rounded-full */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem; /* mx-auto mb-4 */
+}
+
+/* Checkmark icon color */
+.confirmation-icon {
+  width: 2.5rem; /* w-10 */
+  height: 2.5rem; /* h-10 */
+  color: #059669; /* text-green-600 */
+}
+
+/* Appointment Confirmed title */
+.confirmation-title {
+  font-size: 2.25rem; /* text-3xl */
+  font-weight: 700; /* font-bold */
+  color: #1e3a8a; /* text-blue-900 */
+  margin-bottom: 0.5rem; /* mb-2 */
+}
+
+/* Confirmation message */
+.confirmation-message {
+  color: #4b5563; /* text-gray-600 */
+  font-size: 1rem;
+}
+
+/* Section for appointment details (list of items) */
+.appointment-details-list {
+  margin-bottom: 2rem; /* mb-8 */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; /* space-y-4 */
+}
+
+/* Individual detail item styling */
+.detail-item {
+  display: flex;
+  align-items: flex-start; /* Align items to start for multi-line content */
+  gap: 0.75rem; /* space-x-3 */
+  padding: 1rem; /* p-4 */
+  background-color: #eff6ff; /* bg-blue-50 */
+  border-radius: 0.5rem; /* rounded-lg */
+}
+
+/* Icon within detail item */
+.detail-item-icon {
+  flex-shrink: 0; /* Prevent icon from shrinking */
+  width: 1.25rem; /* w-5 */
+  height: 1.25rem; /* h-5 */
+  color: #2563eb; /* text-blue-600 */
+  margin-top: 0.125rem; /* Adjust alignment for text */
+}
+
+/* Text content within detail item */
+.detail-item-text {
+  font-weight: 500; /* font-medium */
+  color: #1e3a8a; /* text-blue-900 */
+  flex-grow: 1; /* Allow text to take available space */
+}
+
+/* Specific styling for the 'Reason for Visit' detail item for multi-line */
+.detail-item.reason-for-visit .detail-item-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-item.reason-for-visit .detail-item-text .main-reason {
+  font-weight: 500;
+  color: #1e3a8a;
+}
+
+.detail-item.reason-for-visit .detail-item-text .notes {
+  font-size: 0.875rem; /* text-sm */
+  color: #2b6cb0; /* text-blue-700 */
+  margin-top: 0.25rem; /* mt-1 */
+}
+
+/* Button section */
+.confirmation-actions {
+  display: flex;
+  /* If there were multiple buttons, gap could be used: gap: 1rem; */
+}
+
+/* Book Another Appointment button */
+.book-another-button {
+  flex: 1; /* flex-1 */
+  background-color: #2563eb; /* bg-blue-600 */
+  color: #ffffff; /* text-white */
+  padding: 0.75rem 1.5rem; /* py-3 rounded-xl */
+  border-radius: 0.75rem;
+  font-weight: 600; /* font-semibold */
+  transition-property: background-color; /* transition-colors */
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  cursor: pointer;
+}
+
+.book-another-button:hover {
+  background-color: #1d4ed8; /* hover:bg-blue-700 */
+}
+
+/* Styling for the back button container */
+.back-button-container {
+  /* This container helps with positioning the button relative to its parent,
+     if it's not already handled by a flex/grid layout in the parent.
+     If it's meant to be absolutely positioned or self-contained, these can be adjusted. */
+  margin-bottom: 1.5rem; /* Equivalent to mb-6 */
+  /* If the button should always be at the top left, consider: */
+  /* position: absolute; */
+  /* top: 2rem; */
+  /* left: 2rem; */
+}
+
+/* Styling for the back button itself */
+.back-button {
+  display: flex; /* Makes the icon and text align nicely */
+  align-items: center; /* Vertically centers icon and text */
+  color: #2563eb; /* text-blue-600 */
+  font-size: 1rem; /* Adjust as needed */
+  font-weight: 500; /* Medium font weight for better readability */
+  text-decoration: none; /* Removes underline if it were an <a> tag */
+  transition-property: color; /* transition-colors */
+  transition-duration: 150ms; /* default transition duration */
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); /* default ease */
+  background: none; /* Ensure no default button background */
+  border: none; /* Remove default button border */
+  padding: 0; /* Remove default button padding */
+  cursor: pointer; /* Indicate it's clickable */
+}
+
+/* Hover state for the back button */
+.back-button:hover {
+  color: #1e40af; /* hover:text-blue-800 */
+}
+
+/* Styling for the ChevronLeft icon */
+.back-button-icon {
+  width: 1.25rem; /* w-5 */
+  height: 1.25rem; /* h-5 */
+  margin-right: 0.25rem; /* mr-1 */
+  /* Adjust vertical alignment if necessary */
+  vertical-align: middle;
+}
+
+
+/* Stepper container */
+.stepper-container {
+  display: flex;
+  justify-content: center; /* flex justify-center */
+  margin-bottom: 2rem; /* mb-8 */
+}
+
+/* Inner wrapper for the stepper items and lines */
+.stepper-inner-wrapper {
+  display: flex;
+  align-items: center; /* items-center */
+  gap: 1rem; /* space-x-4, can be adjusted if lines are part of the gap */
+}
+
+/* Individual step number circle */
+.stepper-step-circle {
+  width: 2.5rem; /* w-8 */
+  height: 2.5rem; /* h-8 */
+  border-radius: 9999px; /* rounded-full */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 500; /* font-medium */
+  transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition for active state */
+}
+
+/* Active step circle */
+.stepper-step-circle.active {
+  background-color: #2563eb; /* bg-blue-600 */
+  color: #ffffff; /* text-white */
+}
+
+/* Inactive step circle */
+.stepper-step-circle.inactive {
+  background-color: #e2e8f0; /* bg-gray-200 */
+  color: #64748b; /* text-gray-500 */
+}
+
+/* Horizontal line between steps */
+.stepper-line {
+  width: 3rem; /* w-12 */
+  height: 0.125rem; /* h-0.5 */
+  background-color: #e2e8f0; /* bg-gray-200 */
+}
+
+.booking-header-section {
+  text-align: center;
+  margin-bottom: 2.5rem; /* Equivalent to mb-10 for spacing below the header */
+}
+
+/* Main title "Book Your Appointment" */
+.booking-main-title {
+  font-size: 2.5rem; /* text-4xl */
+  font-weight: 800; /* Extra bold, to match the image's strong appearance */
+  color: #1a202c; /* A dark text color */
+  margin-bottom: 0.75rem; /* mb-3 */
+}
+
+/* Subtitle "Schedule your visit..." */
+.booking-subtitle {
+  font-size: 1.125rem; /* text-lg */
+  color: #2c5282; /* A slightly darker blue for the subtitle */
+  margin-bottom: 2rem; /* mb-8, to create space before the stepper */
+}
+
+/* Container for the entire calendar legend */
+.calendar-legend {
+  display: flex; /* Arranges legend items in a row */
+  justify-content: center; /* Centers the legend items horizontally */
+  align-items: center; /* Vertically aligns items */
+  gap: 1.5rem; /* space-x-6 (adjust as needed for desired spacing between items) */
+  margin-top: 1.5rem; /* Added margin-top for spacing from content above */
+  flex-wrap: wrap; /* Allows legend items to wrap to the next line on smaller screens */
+}
+
+/* Styling for each individual legend item (e.g., "Available", "Unavailable", "Selected") */
+.legend-item {
+  display: flex; /* Arranges color box and text in a row */
+  align-items: center; /* Vertically centers color box and text */
+  gap: 0.5rem; /* space-x-2 (spacing between color box and text) */
+}
+
+/* Styling for the colored box in each legend item */
+.legend-color {
+  width: 1rem; /* w-4 (adjust size of the color square) */
+  height: 1rem; /* h-4 */
+  border-radius: 0.25rem; /* rounded (slight rounded corners for the color box) */
+  flex-shrink: 0; /* Prevents the color box from shrinking */
+}
+
+/* Specific background colors for legend items */
+.legend-color.available {
+  background-color: #d1fae5; /* bg-green-100 */
+}
+
+.legend-color.unavailable {
+  background-color: #fee2e2; /* bg-red-100 */
+}
+
+.legend-color.selected {
+  background-color: #2563eb; /* bg-blue-600 */
+}
+
+/* Styling for the text label next to the color box */
+.legend-text {
+  font-size: 0.875rem; /* text-sm (adjust font size as needed) */
+  color: #4a5568; /* text-gray-700 (a neutral dark gray for text) */
+  white-space: nowrap; /* Prevents text from wrapping */
+}

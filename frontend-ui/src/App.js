@@ -21,6 +21,7 @@ import Schedule from './Pages/AdminPortal/Schedule';
 import DispenseList from './Pages/AdminPortal/DispenseList';
 import RefillRequestList from './Pages/AdminPortal/RefillRequestList';
 import AppointmentList from './Pages/AdminPortal/AppointmentList';
+import Testing from './Pages/AdminPortal/Testing';
 const Admin = lazy(() => import('./Pages/AdminPortal/Admin'));
 const HomePage = lazy(() => import('./Pages/HomePage/HomePage')); // now not used
 
@@ -55,6 +56,7 @@ function App() {
              <Route path="dispense-list" element={<DispenseList />} />
              <Route path="refill-request" element={<RefillRequestList />} />
              <Route path="appointment-list" element={<AppointmentList />} />
+             <Route path="testing" element={<Testing />} />
            <Route path="schedule" element={<Schedule />} />
           </Route>
 

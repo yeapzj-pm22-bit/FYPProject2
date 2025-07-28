@@ -267,6 +267,11 @@ const SideBar = ({ openMenu, toggleMenu }) => {
                                                                                           &gt; <span>Restock Request</span>
                                                                                         </Link>
                                                                                   </li>
+                                                                                   <li>
+                                                                                            <Link to="/testing">
+                                                                                              &gt; <span>Testing</span>
+                                                                                            </Link>
+                                                                                      </li>
                                                                                </ul>
                         </li>
 
