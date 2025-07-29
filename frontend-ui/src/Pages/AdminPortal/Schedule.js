@@ -55,6 +55,7 @@ const Schedule = () => {
   const [startTime, setStartTime] = useState(null);
   const [endTime, setEndTime] = useState(null);
 
+
   const [events, setEvents] = useState([
     // Sample bookings for July 29, 2025 (Tuesday) - 10 appointments
     {
@@ -369,31 +370,28 @@ const Schedule = () => {
       // Working period before break
       if (formattedBreakStart > formattedWorkingStart) {
         blocks.push({
-          id: `available-morning-${dateStr}`,
-          title: '● Available',
-          start: `${dateStr}T${formattedWorkingStart}:00`,
-          end: `${dateStr}T${formattedBreakStart}:00`,
-          backgroundColor: 'rgba(40, 167, 69, 0.8)',
-          borderColor: '#28a745',
-          textColor: '#ffffff',
-          display: 'block',
-          classNames: ['availability-block'],
-          extendedProps: { isAvailability: true }
-        });
+           id: `available-morning-${dateStr}`,
+           title: '● Available',
+           start: `${dateStr}T${formattedWorkingStart}:00`,
+           end: `${dateStr}T${formattedBreakStart}:00`,
+           display: 'block',
+           classNames: ['availability-block'],
+           extendedProps: { isAvailability: true }
+         });
       }
 
       // Break period
       blocks.push({
         id: `break-${dateStr}`,
-        title: '● Break Time',
+        title: 'Break Time', // ✅ remove ●
         start: `${dateStr}T${formattedBreakStart}:00`,
         end: `${dateStr}T${formattedBreakEnd}:00`,
-        backgroundColor: 'rgba(220, 53, 69, 0.8)',
-        borderColor: '#dc3545',
-        textColor: '#ffffff',
         display: 'block',
-        classNames: ['availability-block'],
-        extendedProps: { isAvailability: true }
+        classNames: ['availability-block', 'break-block'],
+        extendedProps: {
+          isBreak: true,
+          isAvailability: true // ✅ add this
+        }
       });
 
       // Working period after break
@@ -488,7 +486,9 @@ const Schedule = () => {
 
 
   return (
+
     <div className="container-fluid" style={{ paddingTop: '20px' }}>
+
       <div className="row column_title">
         <div className="col-md-12">
           <div className="page_title d-flex justify-content-between align-items-center"
@@ -610,11 +610,18 @@ const Schedule = () => {
               return {
                 html: `
                   <div style="position: relative; height: 100%; width: 100%;">
-                    <div style="font-weight: bold;">${arg.dayNumberText}</div>
+                    <div style={{
+                           position: 'absolute',
+                           top: '2px',
+                           left: '4px',
+                           fontWeight: 'bold',
+                           fontFamily: 'inherit', // Or specify like 'Arial, sans-serif'
+                           fontSize: '14px'
+                         }}>${arg.dayNumberText}</div>
                     <div style="
                       position: absolute;
                       top: 2px;
-                      right: 2px;
+                      right: 120px;
                       background: #1890ff;
                       color: white;
                       border-radius: 50%;
@@ -706,18 +713,34 @@ const Schedule = () => {
           }}
           // Add custom CSS to reduce gaps between events
           eventDidMount={(info) => {
-            if (info.event.extendedProps?.isAvailability) {
-              info.el.style.marginBottom = '1px';
-              info.el.style.border = '1px solid ' + info.event.borderColor;
-              info.el.style.fontSize = '11px';
-              info.el.style.opacity = '0.7';
-              info.el.style.zIndex = '1';
+            const { isBreak, isAvailability } = info.event.extendedProps || {};
+
+            // Remove FullCalendar's default dot (some themes/views show it)
+            const dotEl = info.el.querySelector('.fc-event-dot');
+            if (dotEl) dotEl.style.display = 'none';
+
+            // Remove any leading "● " you put in the title
+            const titleEl = info.el.querySelector('.fc-event-title, .fc-event-title-container, .fc-event-main');
+            if (titleEl && titleEl.textContent) {
+              titleEl.textContent = titleEl.textContent.replace(/^●\s*/, '');
+            }
+
+            // Break FIRST, then availability
+            if (isBreak) {
+              info.el.classList.add('break-block');
+              info.el.style.backgroundColor = 'rgba(220, 53, 69, 0.8)'; // red
+              info.el.style.borderColor = '#dc3545';
+              info.el.style.color = 'white';
+            } else if (isAvailability) {
+              info.el.classList.add('availability-block');
+              info.el.style.backgroundColor = 'rgba(40, 167, 69, 0.8)'; // green
+              info.el.style.borderColor = '#28a745';
+              info.el.style.color = 'white';
             } else {
-              // Regular appointments
+              // Real appointments (interactive)
               info.el.style.fontSize = '11px';
               info.el.style.fontWeight = '500';
               info.el.style.zIndex = '2';
-              // Add hover effect
               info.el.addEventListener('mouseenter', () => {
                 info.el.style.transform = 'scale(1.02)';
                 info.el.style.zIndex = '10';
@@ -728,7 +751,14 @@ const Schedule = () => {
                 info.el.style.zIndex = '2';
                 info.el.style.boxShadow = 'none';
               });
+              return; // don't apply the non-interactive styling below
             }
+
+            // Common styling for visual-only blocks (available + break)
+            info.el.style.height = '100%';
+            info.el.style.display = 'block';
+            info.el.style.pointerEvents = 'none'; // non-interactive
+            info.el.style.userSelect = 'none';
           }}
           // Custom CSS to ensure calendar doesn't overlap navigation
           customClassNames={{
