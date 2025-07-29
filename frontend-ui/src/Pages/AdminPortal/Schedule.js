@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -42,11 +42,11 @@ const Schedule = () => {
   const [showReviewModal, setShowReviewModal] = useState(false);
 
   const [showManageModal, setShowManageModal] = useState(false);
-  const [selectedWeekdays, setSelectedWeekdays] = useState([]);
-  const [workingStartTime, setWorkingStartTime] = useState(null);
-  const [workingEndTime, setWorkingEndTime] = useState(null);
-  const [breakStartTime, setBreakStartTime] = useState(null);
-  const [breakEndTime, setBreakEndTime] = useState(null);
+  const [selectedWeekdays, setSelectedWeekdays] = useState([1, 2, 3, 4, 5]); // Monday to Friday
+  const [workingStartTime, setWorkingStartTime] = useState(dayjs('09:00', 'HH:mm'));
+  const [workingEndTime, setWorkingEndTime] = useState(dayjs('18:00', 'HH:mm'));
+  const [breakStartTime, setBreakStartTime] = useState(dayjs('13:00', 'HH:mm'));
+  const [breakEndTime, setBreakEndTime] = useState(dayjs('14:00', 'HH:mm'));
   const [validYears, setValidYears] = useState(1);
   const calendarRef = useRef();
   const [showModal, setShowModal] = useState(false);
@@ -56,25 +56,152 @@ const Schedule = () => {
   const [endTime, setEndTime] = useState(null);
 
   const [events, setEvents] = useState([
+    // Sample bookings for July 29, 2025 (Tuesday) - 10 appointments
     {
-      title: 'Dr. Lee - Clinic',
-      start: '2025-07-28T10:00:00',
-      end: '2025-07-28T12:00:00',
+      id: 'appointment-1',
+      title: 'John Smith - General Checkup',
+      start: '2025-07-29T09:00:00',
+      end: '2025-07-29T09:30:00',
+      backgroundColor: '#52c41a',
+      borderColor: '#52c41a',
+      textColor: '#fff',
       status: 'approved'
     },
+    {
+      id: 'appointment-2',
+      title: 'Mary Johnson - Blood Test',
+      start: '2025-07-29T09:30:00',
+      end: '2025-07-29T10:00:00',
+      backgroundColor: '#faad14',
+      borderColor: '#faad14',
+      textColor: '#fff',
+      status: 'pending'
+    },
+    {
+      id: 'appointment-3',
+      title: 'Robert Brown - Follow-up',
+      start: '2025-07-29T10:00:00',
+      end: '2025-07-29T10:30:00',
+      backgroundColor: '#52c41a',
+      borderColor: '#52c41a',
+      textColor: '#fff',
+      status: 'approved'
+    },
+    {
+      id: 'appointment-4',
+      title: 'Lisa Wilson - Vaccination',
+      start: '2025-07-29T10:30:00',
+      end: '2025-07-29T11:00:00',
+      backgroundColor: '#ff4d4f',
+      borderColor: '#ff4d4f',
+      textColor: '#fff',
+      status: 'rejected'
+    },
+    {
+      id: 'appointment-5',
+      title: 'David Chen - Consultation',
+      start: '2025-07-29T11:00:00',
+      end: '2025-07-29T11:30:00',
+      backgroundColor: '#52c41a',
+      borderColor: '#52c41a',
+      textColor: '#fff',
+      status: 'approved'
+    },
+    {
+      id: 'appointment-6',
+      title: 'Emma Davis - X-Ray Review',
+      start: '2025-07-29T11:30:00',
+      end: '2025-07-29T12:00:00',
+      backgroundColor: '#faad14',
+      borderColor: '#faad14',
+      textColor: '#fff',
+      status: 'pending'
+    },
+    {
+      id: 'appointment-7',
+      title: 'Michael Lee - Physical Exam',
+      start: '2025-07-29T12:00:00',
+      end: '2025-07-29T12:30:00',
+      backgroundColor: '#52c41a',
+      borderColor: '#52c41a',
+      textColor: '#fff',
+      status: 'approved'
+    },
+    {
+      id: 'appointment-8',
+      title: 'Sarah Taylor - Prescription',
+      start: '2025-07-29T12:30:00',
+      end: '2025-07-29T13:00:00',
+      backgroundColor: '#faad14',
+      borderColor: '#faad14',
+      textColor: '#fff',
+      status: 'pending'
+    },
+    {
+      id: 'appointment-9',
+      title: 'James Miller - Lab Results',
+      start: '2025-07-29T14:00:00',
+      end: '2025-07-29T14:30:00',
+      backgroundColor: '#52c41a',
+      borderColor: '#52c41a',
+      textColor: '#fff',
+      status: 'approved'
+    },
+    {
+      id: 'appointment-10',
+      title: 'Anna Garcia - Dental Referral',
+      start: '2025-07-29T14:30:00',
+      end: '2025-07-29T15:00:00',
+      backgroundColor: '#ff4d4f',
+      borderColor: '#ff4d4f',
+      textColor: '#fff',
+      status: 'rejected'
+    },
+    // Additional sample appointments for other days
+    {
+      id: 'appointment-11',
+      title: 'Tom Wilson - Routine Check',
+      start: '2025-07-30T15:00:00',
+      end: '2025-07-30T15:30:00',
+      backgroundColor: '#52c41a',
+      borderColor: '#52c41a',
+      textColor: '#fff',
+      status: 'approved'
+    },
+    {
+      id: 'appointment-12',
+      title: 'Jennifer Martinez - Consultation',
+      start: '2025-07-31T16:00:00',
+      end: '2025-07-31T16:30:00',
+      backgroundColor: '#faad14',
+      borderColor: '#faad14',
+      textColor: '#fff',
+      status: 'pending'
+    }
   ]);
 
-  const handleGenerateSchedule = () => {
-    const weekdays = selectedWeekdays;
+  // Generate default schedule on component mount
+  useEffect(() => {
+    generateDefaultSchedule();
+  }, []);
+
+
+
+  const generateDefaultSchedule = () => {
+    const weekdays = [1, 2, 3, 4, 5]; // Monday to Friday
     const today = new Date();
     const futureDate = new Date();
-    futureDate.setFullYear(today.getFullYear() + validYears);
+    futureDate.setFullYear(today.getFullYear() + 1);
 
     const tempEvents = [];
-    const workingStart = workingStartTime?.format('HH:mm');
-    const workingEnd = workingEndTime?.format('HH:mm');
-    const breakStart = breakStartTime?.format('HH:mm');
-    const breakEnd = breakEndTime?.format('HH:mm');
+    const workingStart = '09:00';
+    const workingEnd = '18:00';
+    const breakStart = '13:00';
+    const breakEnd = '14:00';
+
+    console.log('Generating default schedule with times:', {
+      workingStart, workingEnd, breakStart, breakEnd
+    });
 
     for (let d = new Date(today); d <= futureDate; d.setDate(d.getDate() + 1)) {
       const day = d.getDay();
@@ -92,7 +219,82 @@ const Schedule = () => {
           classNames: ['working-day-bg']
         });
 
-        // Week/Day view - use resource-like approach for better time blocks
+        // Create the three time blocks using the same logic
+        const timeBlocks = createOptimizedTimeBlocks(dateStr, workingStart, workingEnd, breakStart, breakEnd);
+        tempEvents.push(...timeBlocks);
+      } else {
+        // Non-working day - red background for month view
+        tempEvents.push({
+          id: `non-working-day-${dateStr}`,
+          start: dateStr,
+          allDay: true,
+          display: "background",
+          backgroundColor: "rgba(220, 53, 69, 0.3)",
+          classNames: ['non-working-day-bg']
+        });
+      }
+    }
+
+    console.log(`Default schedule: Generated ${tempEvents.length} total events`);
+
+    // Add schedule events to existing appointments
+    setEvents((prevEvents) => {
+      // Filter out any existing schedule events first
+      const filteredEvents = prevEvents.filter((e) => {
+        const isScheduleEvent = (
+          e.display === 'background' ||
+          e.classNames?.some(className =>
+            ['working-day-bg', 'non-working-day-bg', 'time-block', 'availability-block'].includes(className)
+          ) ||
+          e.extendedProps?.isAvailability ||
+          e.id?.includes('working-day-') ||
+          e.id?.includes('non-working-day-') ||
+          e.id?.includes('available-') ||
+          e.id?.includes('break-')
+        );
+        return !isScheduleEvent;
+      });
+
+      console.log(`Default schedule: Keeping ${filteredEvents.length} appointments, adding ${tempEvents.length} schedule events`);
+      return [...filteredEvents, ...tempEvents];
+    });
+  };
+
+  const handleGenerateSchedule = () => {
+    const weekdays = selectedWeekdays;
+    const today = new Date();
+    const futureDate = new Date();
+    futureDate.setFullYear(today.getFullYear() + validYears);
+
+    const tempEvents = [];
+
+    // Get the formatted times
+    const workingStart = workingStartTime?.format('HH:mm');
+    const workingEnd = workingEndTime?.format('HH:mm');
+    const breakStart = breakStartTime?.format('HH:mm');
+    const breakEnd = breakEndTime?.format('HH:mm');
+
+    console.log('Custom schedule generation with times:', {
+      workingStart, workingEnd, breakStart, breakEnd, weekdays
+    });
+
+    for (let d = new Date(today); d <= futureDate; d.setDate(d.getDate() + 1)) {
+      const day = d.getDay();
+      const dateStr = d.toISOString().split("T")[0];
+      const isWorkingDay = weekdays.includes(day);
+
+      if (isWorkingDay) {
+        // Month view - highlight working days in green
+        tempEvents.push({
+          id: `working-day-${dateStr}`,
+          start: dateStr,
+          allDay: true,
+          display: "background",
+          backgroundColor: "rgba(40, 167, 69, 0.3)",
+          classNames: ['working-day-bg']
+        });
+
+        // Create time blocks
         if (workingStart && workingEnd) {
           const timeBlocks = createOptimizedTimeBlocks(dateStr, workingStart, workingEnd, breakStart, breakEnd);
           tempEvents.push(...timeBlocks);
@@ -110,16 +312,28 @@ const Schedule = () => {
       }
     }
 
-    // Clear existing schedule events and add new ones
-    setEvents((prevEvents) => [
-      ...prevEvents.filter((e) =>
-        e.display !== 'background' &&
-        !e.classNames?.some(className =>
-          ['working-day-bg', 'non-working-day-bg', 'time-block', 'availability-block'].includes(className)
-        )
-      ),
-      ...tempEvents,
-    ]);
+    console.log(`Custom schedule: Generated ${tempEvents.length} total events`);
+
+    // Replace all schedule events with new ones
+    setEvents((prevEvents) => {
+      const filteredEvents = prevEvents.filter((e) => {
+        const isScheduleEvent = (
+          e.display === 'background' ||
+          e.classNames?.some(className =>
+            ['working-day-bg', 'non-working-day-bg', 'time-block', 'availability-block'].includes(className)
+          ) ||
+          e.extendedProps?.isAvailability ||
+          e.id?.includes('working-day-') ||
+          e.id?.includes('non-working-day-') ||
+          e.id?.includes('available-') ||
+          e.id?.includes('break-')
+        );
+        return !isScheduleEvent;
+      });
+
+      console.log(`Custom schedule: Keeping ${filteredEvents.length} appointments, adding ${tempEvents.length} new schedule events`);
+      return [...filteredEvents, ...tempEvents];
+    });
 
     setShowManageModal(false);
   };
@@ -128,20 +342,37 @@ const Schedule = () => {
   const createOptimizedTimeBlocks = (dateStr, workingStart, workingEnd, breakStart, breakEnd) => {
     const blocks = [];
 
-    // Use a different approach: create "availability" events instead of background blocks
-    // This reduces visual overlap issues
+    // Helper function to ensure proper time format
+    const formatTime = (timeStr) => {
+      if (!timeStr || timeStr === 'undefined') return null;
+      return timeStr.length > 5 ? timeStr.substring(0, 5) : timeStr;
+    };
 
-    if (breakStart && breakEnd &&
-        breakStart >= workingStart &&
-        breakEnd <= workingEnd) {
+    const formattedWorkingStart = formatTime(workingStart);
+    const formattedWorkingEnd = formatTime(workingEnd);
+    const formattedBreakStart = formatTime(breakStart);
+    const formattedBreakEnd = formatTime(breakEnd);
 
+    // Validate that we have working times
+    if (!formattedWorkingStart || !formattedWorkingEnd) {
+      console.log(`Skipping ${dateStr}: Missing working times`);
+      return blocks;
+    }
+
+    // Check if we have valid break times within working hours
+    const hasValidBreak = formattedBreakStart && formattedBreakEnd &&
+      formattedBreakStart >= formattedWorkingStart &&
+      formattedBreakEnd <= formattedWorkingEnd &&
+      formattedBreakStart < formattedBreakEnd;
+
+    if (hasValidBreak) {
       // Working period before break
-      if (breakStart > workingStart) {
+      if (formattedBreakStart > formattedWorkingStart) {
         blocks.push({
           id: `available-morning-${dateStr}`,
           title: '● Available',
-          start: `${dateStr}T${workingStart}:00`,
-          end: `${dateStr}T${breakStart}:00`,
+          start: `${dateStr}T${formattedWorkingStart}:00`,
+          end: `${dateStr}T${formattedBreakStart}:00`,
           backgroundColor: 'rgba(40, 167, 69, 0.8)',
           borderColor: '#28a745',
           textColor: '#ffffff',
@@ -155,8 +386,8 @@ const Schedule = () => {
       blocks.push({
         id: `break-${dateStr}`,
         title: '● Break Time',
-        start: `${dateStr}T${breakStart}:00`,
-        end: `${dateStr}T${breakEnd}:00`,
+        start: `${dateStr}T${formattedBreakStart}:00`,
+        end: `${dateStr}T${formattedBreakEnd}:00`,
         backgroundColor: 'rgba(220, 53, 69, 0.8)',
         borderColor: '#dc3545',
         textColor: '#ffffff',
@@ -166,12 +397,12 @@ const Schedule = () => {
       });
 
       // Working period after break
-      if (breakEnd < workingEnd) {
+      if (formattedBreakEnd < formattedWorkingEnd) {
         blocks.push({
           id: `available-afternoon-${dateStr}`,
           title: '● Available',
-          start: `${dateStr}T${breakEnd}:00`,
-          end: `${dateStr}T${workingEnd}:00`,
+          start: `${dateStr}T${formattedBreakEnd}:00`,
+          end: `${dateStr}T${formattedWorkingEnd}:00`,
           backgroundColor: 'rgba(40, 167, 69, 0.8)',
           borderColor: '#28a745',
           textColor: '#ffffff',
@@ -180,13 +411,18 @@ const Schedule = () => {
           extendedProps: { isAvailability: true }
         });
       }
+
+      // Log the three blocks for this date (only show first few dates to avoid spam)
+      if (dateStr <= '2025-08-05') {
+        console.log(`${dateStr} - Three blocks created: ${formattedWorkingStart}-${formattedBreakStart} (Available), ${formattedBreakStart}-${formattedBreakEnd} (Break), ${formattedBreakEnd}-${formattedWorkingEnd} (Available)`);
+      }
     } else {
       // No break - single availability block
       blocks.push({
         id: `available-full-${dateStr}`,
         title: '● Available',
-        start: `${dateStr}T${workingStart}:00`,
-        end: `${dateStr}T${workingEnd}:00`,
+        start: `${dateStr}T${formattedWorkingStart}:00`,
+        end: `${dateStr}T${formattedWorkingEnd}:00`,
         backgroundColor: 'rgba(40, 167, 69, 0.8)',
         borderColor: '#28a745',
         textColor: '#ffffff',
@@ -194,6 +430,10 @@ const Schedule = () => {
         classNames: ['availability-block'],
         extendedProps: { isAvailability: true }
       });
+
+      if (dateStr <= '2025-08-05') {
+        console.log(`${dateStr} - Single block created: ${formattedWorkingStart}-${formattedWorkingEnd} (Available)`);
+      }
     }
 
     return blocks;
@@ -246,11 +486,17 @@ const Schedule = () => {
     setValidYears(1);
   };
 
+
   return (
-    <div className="container-fluid">
+    <div className="container-fluid" style={{ paddingTop: '20px' }}>
       <div className="row column_title">
         <div className="col-md-12">
-          <div className="page_title d-flex justify-content-between align-items-center">
+          <div className="page_title d-flex justify-content-between align-items-center"
+               style={{
+                 padding: '15px 0',
+                 marginBottom: '20px',
+                 borderBottom: '1px solid #f0f0f0'
+               }}>
             <Title level={2} style={{ margin: 0 }}>Doctor Schedule</Title>
             <Space>
               <DatePicker onChange={handleDateChange} />
@@ -262,7 +508,16 @@ const Schedule = () => {
         </div>
       </div>
 
-      <div className="container mt-4">
+      <div className="container" style={{ marginTop: '10px' }}>
+        <div style={{
+          position: 'relative',
+          zIndex: 1,
+          backgroundColor: '#fff',
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          padding: '20px',
+          marginBottom: '20px'
+        }}>
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -278,18 +533,26 @@ const Schedule = () => {
           views={{
             dayGridMonth: {
               displayEventEnd: true,
+              dayMaxEvents: 3, // Show only 3 events, then "+X more" link
+              moreLinkClick: 'popover', // Show popover when clicking "+X more"
             },
             timeGridWeek: {
               displayEventEnd: true,
-              slotMinTime: '06:00:00',
-              slotMaxTime: '22:00:00',
-              eventDisplay: 'block', // Better display for overlapping prevention
+              slotMinTime: '08:00:00',
+              slotMaxTime: '19:00:00',
+              eventDisplay: 'block',
+              slotDuration: '00:30:00', // 30-minute time slots
+              slotLabelInterval: '01:00:00', // Show hour labels
+              eventMaxStack: 3, // Limit event stacking
             },
             timeGridDay: {
               displayEventEnd: true,
-              slotMinTime: '06:00:00',
-              slotMaxTime: '22:00:00',
+              slotMinTime: '08:00:00',
+              slotMaxTime: '19:00:00',
               eventDisplay: 'block',
+              slotDuration: '00:15:00', // 15-minute time slots for detailed view
+              slotLabelInterval: '01:00:00',
+              eventMaxStack: 1, // Single column in day view
             },
           }}
           eventClick={(info) => {
@@ -311,6 +574,70 @@ const Schedule = () => {
             setApprovalStatus(event.extendedProps?.status || 'pending');
             setShowReviewModal(true);
           }}
+
+          // Add day cell content to show appointment count
+          dayCellContent={(arg) => {
+            // Get the date in YYYY-MM-DD format (local timezone)
+            const year = arg.date.getFullYear();
+            const month = String(arg.date.getMonth() + 1).padStart(2, '0');
+            const day = String(arg.date.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}`;
+
+            // Filter events for this specific date
+            const dayEvents = events.filter(event => {
+              if (!event.start || event.extendedProps?.isAvailability || event.display === 'background') {
+                return false;
+              }
+
+              // Handle both string and Date object formats
+              let eventDateStr;
+              if (typeof event.start === 'string') {
+                eventDateStr = event.start.split('T')[0];
+              } else if (event.start instanceof Date) {
+                const eventYear = event.start.getFullYear();
+                const eventMonth = String(event.start.getMonth() + 1).padStart(2, '0');
+                const eventDay = String(event.start.getDate()).padStart(2, '0');
+                eventDateStr = `${eventYear}-${eventMonth}-${eventDay}`;
+              } else {
+                return false;
+              }
+
+              // Exact date match
+              return eventDateStr === dateStr;
+            });
+
+            if (arg.view.type === 'dayGridMonth' && dayEvents.length > 0) {
+              return {
+                html: `
+                  <div style="position: relative; height: 100%; width: 100%;">
+                    <div style="font-weight: bold;">${arg.dayNumberText}</div>
+                    <div style="
+                      position: absolute;
+                      top: 2px;
+                      right: 2px;
+                      background: #1890ff;
+                      color: white;
+                      border-radius: 50%;
+                      width: 18px;
+                      height: 18px;
+                      font-size: 11px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-weight: bold;
+                      z-index: 10;
+                    ">${dayEvents.length}</div>
+                  </div>
+                `
+              };
+            }
+            return { html: `<div>${arg.dayNumberText}</div>` };
+          }}
+
+
+
+
+
           eventContent={(arg) => {
             // Don't customize background events
             if (arg.event.display === 'background') return null;
@@ -382,8 +709,105 @@ const Schedule = () => {
             if (info.event.extendedProps?.isAvailability) {
               info.el.style.marginBottom = '1px';
               info.el.style.border = '1px solid ' + info.event.borderColor;
+              info.el.style.fontSize = '11px';
+              info.el.style.opacity = '0.7';
+              info.el.style.zIndex = '1';
+            } else {
+              // Regular appointments
+              info.el.style.fontSize = '11px';
+              info.el.style.fontWeight = '500';
+              info.el.style.zIndex = '2';
+              // Add hover effect
+              info.el.addEventListener('mouseenter', () => {
+                info.el.style.transform = 'scale(1.02)';
+                info.el.style.zIndex = '10';
+                info.el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+              });
+              info.el.addEventListener('mouseleave', () => {
+                info.el.style.transform = 'scale(1)';
+                info.el.style.zIndex = '2';
+                info.el.style.boxShadow = 'none';
+              });
             }
           }}
+          // Custom CSS to ensure calendar doesn't overlap navigation
+          customClassNames={{
+            calendar: 'custom-fullcalendar'
+          }}
+        />
+        </div>
+
+        {/* Add custom CSS styles */}
+        <style jsx>{`
+          .custom-fullcalendar {
+            position: relative !important;
+            z-index: 1 !important;
+          }
+
+          .fc-header-toolbar {
+            position: relative !important;
+            z-index: 2 !important;
+            background: white;
+            padding: 10px 0;
+            margin-bottom: 10px !important;
+          }
+
+          .fc-view-harness {
+            position: relative !important;
+            z-index: 1 !important;
+          }
+
+          .fc-daygrid-event-harness,
+          .fc-timegrid-event-harness {
+            z-index: 2 !important;
+          }
+
+          .fc-popover {
+            z-index: 1000 !important;
+          }
+
+          .fc-more-popover {
+            z-index: 1000 !important;
+          }
+
+          /* Ensure modal z-index is higher than sticky nav */
+
+
+          /* Fix for sticky navigation overlap */
+          .fc-toolbar {
+            position: relative !important;
+            z-index: 2 !important;
+          }
+
+          /* Calendar container adjustments */
+          .fc {
+            margin-top: 0 !important;
+          }
+
+          /* Ensure calendar events don't go behind nav */
+          .fc-event {
+            position: relative !important;
+          }
+
+          /* Custom scrollbar for better appearance */
+          .fc-scroller::-webkit-scrollbar {
+            width: 6px;
+          }
+
+          .fc-scroller::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+          }
+
+          .fc-scroller::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+          }
+
+          .fc-scroller::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+          }
+        `}</style>
         />
 
         {/* Add Appointment Modal */}
