@@ -272,6 +272,11 @@ const SideBar = ({ openMenu, toggleMenu }) => {
                                                                                               &gt; <span>Testing</span>
                                                                                             </Link>
                                                                                       </li>
+                                                                                       <li>
+                                                                                            <Link to="/Testing2">
+                                                                                              &gt; <span>Testing2</span>
+                                                                                            </Link>
+                                                                                      </li>
                                                                                </ul>
                         </li>
 

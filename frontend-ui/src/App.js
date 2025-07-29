@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import React, { lazy, Suspense } from 'react';
-
 import Login from './Pages/UserManagement/Login';
 import Register from './Pages/UserManagement/Register';
 import ForgetPasswordForEmail from './Pages/UserManagement/ForgetPasswordForEmail';
@@ -22,18 +21,38 @@ import DispenseList from './Pages/AdminPortal/DispenseList';
 import RefillRequestList from './Pages/AdminPortal/RefillRequestList';
 import AppointmentList from './Pages/AdminPortal/AppointmentList';
 import Testing from './Pages/AdminPortal/Testing';
+import Testing2 from './Pages/AdminPortal/Testing2';
+
+
+
+import AppointmentAndMedicalRecord from './Pages/HomePage/AppointmentAndMedicalRecord';
+import BookAppointment from './Pages/HomePage/BookAppointment';
+import Login2 from './Pages/HomePage/Login';
+import Register2 from './Pages/HomePage/Register';
+import Profile from './Pages/HomePage/Profile';
+
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 const Admin = lazy(() => import('./Pages/AdminPortal/Admin'));
 const HomePage = lazy(() => import('./Pages/HomePage/HomePage')); // now not used
+
+const PatientHomePage = lazy(() => import('./Pages/HomePage/PatientHomePage'));
 
 
 function App() {
   return (
+  <>
+    <ToastContainer  position="top-center"/>
     <Router>
       <Suspense fallback={<div>Loading...</div>}>
         <Routes>
           {/* Root path renders Admin */}
-          <Route path="/" element={< Admin/>} />
-
+          <Route path="/" element={< PatientHomePage/>} />
+          <Route path="/AppointmentAndMedicalRecord" element={<AppointmentAndMedicalRecord />} />
+          <Route path="/BookAppointment" element={<BookAppointment />} />
+          <Route path="/Login" element={<Login2 />} />
+          <Route path="/Register" element={<Register2 />} />
+          <Route path="/Profile" element={<Profile />} />
           {/* Other routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -57,6 +76,7 @@ function App() {
              <Route path="refill-request" element={<RefillRequestList />} />
              <Route path="appointment-list" element={<AppointmentList />} />
              <Route path="testing" element={<Testing />} />
+             <Route path="Testing2" element={<Testing2 />} />
            <Route path="schedule" element={<Schedule />} />
           </Route>
 
@@ -65,6 +85,7 @@ function App() {
         </Routes>
       </Suspense>
     </Router>
+    </>
   );
 }
 

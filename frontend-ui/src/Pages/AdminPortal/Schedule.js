@@ -17,11 +17,15 @@ import {
   Space,
   Typography,
   TimePicker,
-  DatePicker
+  DatePicker,
+  message,
+  notification,
 } from 'antd';
+import 'antd/dist/reset.css';
 import dayjs from 'dayjs';
 import './css/Schedule.css';
-
+import Swal from 'sweetalert2';
+import { toast } from 'react-toastify';
 const { Option } = Select;
 const { Title, Text } = Typography;
 
@@ -184,7 +188,7 @@ const Schedule = () => {
   // Generate default schedule on component mount
   useEffect(() => {
     generateDefaultSchedule();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
 
 
@@ -484,20 +488,158 @@ const Schedule = () => {
     setValidYears(1);
   };
 
+  // Function to update availability when an appointment is approved
+  const updateAvailabilityForApprovedAppointment = (eventDate, eventStart, eventEnd) => {
+    setEvents(prevEvents => {
+      // Get all existing booked appointments for this date
+      const existingBookedAppointments = prevEvents.filter(event =>
+        event.extendedProps?.isBooked &&
+        event.start &&
+        event.start.toString().startsWith(eventDate)
+      );
+
+      // Get all other events (non-availability, non-booked for this date)
+      const otherEvents = prevEvents.filter(event =>
+        !(event.extendedProps?.isAvailability &&
+          event.start &&
+          event.start.toString().startsWith(eventDate))
+      );
+
+      // Get the working hours for this date
+      const workingStart = '09:00';
+      const workingEnd = '18:00';
+      const breakStart = '13:00';
+      const breakEnd = '14:00';
+
+      // Add the new appointment to the list of booked appointments
+      const allBookedAppointments = [
+        ...existingBookedAppointments,
+        {
+          id: `booked-${eventDate}-${eventStart.split('T')[1].substring(0, 5)}`,
+          title: 'Booked',
+          start: eventStart,
+          end: eventEnd,
+          display: 'block',
+          classNames: ['availability-block', 'booked-block'],
+          extendedProps: {
+            isBooked: true,
+            isAvailability: true
+          }
+        }
+      ];
+
+      // Sort all booked appointments by start time
+      allBookedAppointments.sort((a, b) => new Date(a.start) - new Date(b.start));
+
+      const newAvailabilityBlocks = [];
+
+      // Always add the break block
+      newAvailabilityBlocks.push({
+        id: `break-${eventDate}`,
+        title: 'Break Time',
+        start: `${eventDate}T${breakStart}:00`,
+        end: `${eventDate}T${breakEnd}:00`,
+        display: 'block',
+        classNames: ['availability-block', 'break-block'],
+        extendedProps: {
+          isBreak: true,
+          isAvailability: true
+        }
+      });
+
+      // Split the day into two segments: before break and after break
+      // Collect booked appointments for each segment
+      const morningBookings = allBookedAppointments.filter(a => a.start.split('T')[1].substring(0,5) < breakStart);
+      const afternoonBookings = allBookedAppointments.filter(a => a.start.split('T')[1].substring(0,5) >= breakEnd);
+
+      // --- MORNING (before break) ---
+      let currentTime = workingStart;
+      for (let i = 0; i < morningBookings.length; i++) {
+        const appointment = morningBookings[i];
+        const appointmentStart = appointment.start.split('T')[1].substring(0, 5);
+        const appointmentEnd = appointment.end.split('T')[1].substring(0, 5);
+        // Add available block before this appointment
+        if (currentTime < appointmentStart) {
+          newAvailabilityBlocks.push({
+            id: `available-before-${eventDate}-morning-${i}`,
+            title: '● Available',
+            start: `${eventDate}T${currentTime}:00`,
+            end: appointment.start,
+            display: 'block',
+            classNames: ['availability-block'],
+            extendedProps: { isAvailability: true }
+          });
+        }
+        // Add the booked appointment
+        newAvailabilityBlocks.push(appointment);
+        currentTime = appointmentEnd;
+      }
+      // Available block after last morning booking, up to breakStart
+      if (currentTime < breakStart) {
+        newAvailabilityBlocks.push({
+          id: `available-before-break-${eventDate}`,
+          title: '● Available',
+          start: `${eventDate}T${currentTime}:00`,
+          end: `${eventDate}T${breakStart}:00`,
+          display: 'block',
+          classNames: ['availability-block'],
+          extendedProps: { isAvailability: true }
+        });
+      }
+
+      // --- AFTERNOON (after break) ---
+      currentTime = breakEnd;
+      for (let i = 0; i < afternoonBookings.length; i++) {
+        const appointment = afternoonBookings[i];
+        const appointmentStart = appointment.start.split('T')[1].substring(0, 5);
+        const appointmentEnd = appointment.end.split('T')[1].substring(0, 5);
+        // Add available block before this appointment
+        if (currentTime < appointmentStart) {
+          newAvailabilityBlocks.push({
+            id: `available-after-break-${eventDate}-afternoon-${i}`,
+            title: '● Available',
+            start: `${eventDate}T${currentTime}:00`,
+            end: appointment.start,
+            display: 'block',
+            classNames: ['availability-block'],
+            extendedProps: { isAvailability: true }
+          });
+        }
+        // Add the booked appointment
+        newAvailabilityBlocks.push(appointment);
+        currentTime = appointmentEnd;
+      }
+      // Available block after last afternoon booking, up to workingEnd
+      if (currentTime < workingEnd) {
+        newAvailabilityBlocks.push({
+          id: `available-after-last-appointment-${eventDate}`,
+          title: '● Available',
+          start: `${eventDate}T${currentTime}:00`,
+          end: `${eventDate}T${workingEnd}:00`,
+          display: 'block',
+          classNames: ['availability-block'],
+          extendedProps: { isAvailability: true }
+        });
+      }
+
+      return [...otherEvents, ...newAvailabilityBlocks];
+    });
+  };
+
 
   return (
 
-    <div className="container-fluid" style={{ paddingTop: '20px' }}>
+    <div className="container-fluid" style={{ paddingTop: '0px' }}>
 
       <div className="row column_title">
         <div className="col-md-12">
           <div className="page_title d-flex justify-content-between align-items-center"
                style={{
-                 padding: '15px 0',
+                 padding: '20px 0',
                  marginBottom: '20px',
                  borderBottom: '1px solid #f0f0f0'
                }}>
-            <Title level={2} style={{ margin: 0 }}>Doctor Schedule</Title>
+            <Title level={2} style={{ margin: 10 }}>Doctor Schedule</Title>
             <Space>
               <DatePicker onChange={handleDateChange} />
               <Button type="primary" onClick={() => setShowManageModal(true)}>
@@ -558,9 +700,18 @@ const Schedule = () => {
           eventClick={(info) => {
             const event = info.event;
 
-            // Don't show modal for availability blocks
+            // Don't show modal for availability blocks, booked blocks, or background events
+            if (event.extendedProps?.status === 'approved' || event.extendedProps?.status === 'rejected'){
+
+                               toast.error('This appointment is already approved and cannot be deleted.');
+
+                        return;
+             }
+
             if (event.extendedProps?.isAvailability) return;
+
             if (event.display === 'background') return;
+
 
             setSelectedEvent({
               id: event.id,
@@ -585,7 +736,7 @@ const Schedule = () => {
 
             // Filter events for this specific date
             const dayEvents = events.filter(event => {
-              if (!event.start || event.extendedProps?.isAvailability || event.display === 'background') {
+              if (!event.start || event.extendedProps?.isAvailability || event.extendedProps?.isBooked || event.display === 'background') {
                 return false;
               }
 
@@ -648,6 +799,13 @@ const Schedule = () => {
           eventContent={(arg) => {
             // Don't customize background events
             if (arg.event.display === 'background') return null;
+
+            // Show green dot for approved booked blocks
+            if (arg.event.extendedProps?.isBooked && arg.event.extendedProps?.status === 'approved') {
+              return {
+                html: `<div style="display: flex; align-items: center; gap: 4px; font-size: 11px; padding: 1px 3px;"><span style=\"width: 6px; height: 6px; background-color: #52c41a; border-radius: 50%; display: inline-block; flex-shrink: 0;\"></span><span>Booked</span></div>`
+              };
+            }
 
             // Don't customize availability blocks (let them show their title)
             if (arg.event.extendedProps?.isAvailability) {
@@ -713,7 +871,7 @@ const Schedule = () => {
           }}
           // Add custom CSS to reduce gaps between events
           eventDidMount={(info) => {
-            const { isBreak, isAvailability } = info.event.extendedProps || {};
+            const { isBreak, isAvailability, isBooked } = info.event.extendedProps || {};
 
             // Remove FullCalendar's default dot (some themes/views show it)
             const dotEl = info.el.querySelector('.fc-event-dot');
@@ -725,8 +883,13 @@ const Schedule = () => {
               titleEl.textContent = titleEl.textContent.replace(/^●\s*/, '');
             }
 
-            // Break FIRST, then availability
-            if (isBreak) {
+            // Booked FIRST, then Break, then availability
+            if (isBooked) {
+              info.el.classList.add('booked-block');
+              info.el.style.backgroundColor = 'rgba(220, 53, 69, 0.8)'; // red (same as break)
+              info.el.style.borderColor = '#dc3545';
+              info.el.style.color = 'white';
+            } else if (isBreak) {
               info.el.classList.add('break-block');
               info.el.style.backgroundColor = 'rgba(220, 53, 69, 0.8)'; // red
               info.el.style.borderColor = '#dc3545';
@@ -754,7 +917,7 @@ const Schedule = () => {
               return; // don't apply the non-interactive styling below
             }
 
-            // Common styling for visual-only blocks (available + break)
+            // Common styling for visual-only blocks (available + break + booked)
             info.el.style.height = '100%';
             info.el.style.display = 'block';
             info.el.style.pointerEvents = 'none'; // non-interactive
@@ -838,7 +1001,6 @@ const Schedule = () => {
             background: #a8a8a8;
           }
         `}</style>
-        />
 
         {/* Add Appointment Modal */}
         <Modal
@@ -908,6 +1070,7 @@ const Schedule = () => {
             resetManageForm();
           }}
           width={700}
+
           footer={[
             <Button key="cancel" onClick={() => setShowManageModal(false)}>
               Cancel
@@ -1018,6 +1181,7 @@ const Schedule = () => {
           title="Review Appointment"
           open={showReviewModal}
           onCancel={() => setShowReviewModal(false)}
+          bodyStyle={{ maxHeight: '60vh', overflowY: 'auto' }}
           footer={[
             <Button key="cancel" onClick={() => setShowReviewModal(false)}>
               Close
@@ -1027,14 +1191,29 @@ const Schedule = () => {
               type="primary"
               onClick={() => {
                 if (selectedEventObj) {
+                  const eventStart = selectedEventObj.startStr;
+                  const eventEnd = selectedEventObj.endStr;
+                  const eventDate = eventStart.split('T')[0];
+
                   selectedEventObj.setExtendedProp('status', approvalStatus);
 
                   if (approvalStatus === 'approved') {
-                    selectedEventObj.setProp('backgroundColor', '#52c41a');
-                    selectedEventObj.setProp('borderColor', '#52c41a');
+                      selectedEventObj.setProp('backgroundColor', '#52c41a'); // green background
+                      selectedEventObj.setProp('borderColor', '#52c41a');     // green border
+                      selectedEventObj.setProp('textColor', '#ffffff');
+
+                      // Assuming selectedEventObj is part of your 'events' state,
+                      // you might need to trigger a state update for FullCalendar to re-render with these props.
+                      // This often involves creating a new array to force a re-render.
+                      setEvents(prevEvents => prevEvents.map(event =>
+                          event.id === selectedEventObj.id ? selectedEventObj : event
+                      ));
+
+                      // Then, if you still need to recalculate availability for the day:
+                      updateAvailabilityForApprovedAppointment(eventDate, eventStart, eventEnd);
                   } else if (approvalStatus === 'rejected') {
-                    selectedEventObj.setProp('backgroundColor', '#ff4d4f');
-                    selectedEventObj.setProp('borderColor', '#ff4d4f');
+                    // Remove the event entirely
+                      selectedEventObj.remove();
                   } else {
                     selectedEventObj.setProp('backgroundColor', '#faad14');
                     selectedEventObj.setProp('borderColor', '#faad14');
@@ -1080,7 +1259,7 @@ const Schedule = () => {
             </div>
 
             <div>
-              <Text strong>Update Status:</Text>
+              <Text strong>Update Status:</Text> <br />
               <Radio.Group
                 value={approvalStatus}
                 onChange={(e) => setApprovalStatus(e.target.value)}
@@ -1092,9 +1271,6 @@ const Schedule = () => {
                   </Radio>
                   <Radio value="rejected">
                     <Text type="danger">✗ Reject Appointment</Text>
-                  </Radio>
-                  <Radio value="pending">
-                    <Text type="warning">⏳ Keep Pending</Text>
                   </Radio>
                 </Space>
               </Radio.Group>
