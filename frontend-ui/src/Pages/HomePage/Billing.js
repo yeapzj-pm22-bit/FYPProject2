@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Calendar, CreditCard, CheckCircle, XCircle, Clock, AlertCircle, DollarSign, Receipt, Filter, ArrowLeft, Search, Download } from 'lucide-react';
 import PatientHeader from '../../Components/PatientHeader';
 import PatientFooter from '../../Components/PatientFooter';
-
+import { useNavigate } from 'react-router-dom';
 const PatientBilling = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('bills');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedBill, setSelectedBill] = useState(null);
@@ -128,8 +129,8 @@ const PatientBilling = () => {
   });
 
   const handlePayment = (bill) => {
-    setSelectedBill(bill);
-    setShowPaymentForm(true);
+    // Optional: do something with `bill` if needed
+    navigate('/payment'); // Redirect to payment page
   };
 
   const handlePaymentMethodSelect = (method) => {

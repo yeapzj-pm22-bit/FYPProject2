@@ -112,16 +112,44 @@ const PatientDashboard = () => {
         </div>
       </div>
 
+      {/* OPTION 1: Combined Date and Time Container */}
       <div className="appointment-details">
-        <div className="detail-item">
+        <div className="combined-datetime">
           <Calendar style={{ width: '16px', height: '16px' }} />
           <span>{appointment.date}</span>
-        </div>
-        <div className="detail-item">
+          <span className="datetime-separator">•</span>
           <Clock style={{ width: '16px', height: '16px' }} />
           <span>{appointment.time}</span>
         </div>
       </div>
+
+      {/* OPTION 2: Side by Side Clean (uncomment to use) */}
+      {/*
+      <div className="appointment-details">
+        <div className="detail-item-clean">
+          <Calendar style={{ width: '16px', height: '16px' }} />
+          <span>{appointment.date}</span>
+        </div>
+        <div className="detail-item-clean">
+          <Clock style={{ width: '16px', height: '16px' }} />
+          <span>{appointment.time}</span>
+        </div>
+      </div>
+      */}
+
+      {/* OPTION 3: Stacked Layout (uncomment to use) */}
+      {/*
+      <div className="appointment-details-stacked">
+        <div className="detail-item-stacked">
+          <Calendar style={{ width: '16px', height: '16px' }} />
+          <span>{appointment.date}</span>
+        </div>
+        <div className="detail-item-stacked indented">
+          <Clock style={{ width: '16px', height: '16px' }} />
+          <span>{appointment.time}</span>
+        </div>
+      </div>
+      */}
 
       {appointment.hasRecord && (
         <button
@@ -397,12 +425,60 @@ const PatientDashboard = () => {
           margin-bottom: 16px;
         }
 
+        /* OPTION 1: Combined Date and Time Container */
+        .combined-datetime {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background-color: #f3f4f6;
+          padding: 8px 12px;
+          border-radius: 8px;
+          color: #6b7280;
+          font-size: 14px;
+          width: fit-content;
+        }
+
+        .datetime-separator {
+          color: #9ca3af;
+          margin: 0 4px;
+        }
+
+        /* OPTION 2: Clean Side by Side (no individual backgrounds) */
+        .detail-item-clean {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          color: #6b7280;
+          font-size: 14px;
+        }
+
+        /* OPTION 3: Stacked Layout */
+        .appointment-details-stacked {
+          margin-bottom: 16px;
+        }
+
+        .detail-item-stacked {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #6b7280;
+          font-size: 14px;
+          margin-bottom: 4px;
+        }
+
+        .detail-item-stacked.indented {
+          margin-left: 24px;
+          margin-bottom: 0;
+        }
+
+        /* Remove the old detail-item styles that were causing the issue */
         .detail-item {
           display: flex;
           align-items: center;
           gap: 4px;
           color: #6b7280;
           font-size: 14px;
+          /* Remove any background, padding, border-radius that was creating separate containers */
         }
 
         .view-record-btn, .refill-btn {
@@ -692,6 +768,11 @@ const PatientDashboard = () => {
             gap: 8px;
           }
 
+          .combined-datetime {
+            width: 100%;
+            justify-content: flex-start;
+          }
+
           .prescription-header {
             flex-direction: column;
             gap: 8px;
@@ -702,10 +783,10 @@ const PatientDashboard = () => {
           }
         }
       `}</style>
-
 <div>
         {/* Header */}
         <PatientHeader />
+
       <div className="dashboard-container">
         <div className="container">
           <h1 className="main-title">Patient Dashboard</h1>
@@ -791,9 +872,8 @@ const PatientDashboard = () => {
           )}
         </div>
       </div>
-
       <PatientFooter />
-            </div>
+                  </div>
     </>
   );
 };

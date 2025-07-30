@@ -45,7 +45,7 @@ const ProfilePage = () => {
     firstName: 'John',
     lastName: 'Doe',
     email: 'john.doe@email.com',
-    phone: '+1 (555) 123-4567',
+    phone: 'Male',
     dateOfBirth: '1990-05-15',
     address: '123 Health Street',
     city: 'Medical City',
@@ -675,7 +675,7 @@ const ProfilePage = () => {
               <h1 className="profile-name">
                 {profileData.firstName} {profileData.lastName}
               </h1>
-              <p className="profile-role">Patient ID: HC-2024-001</p>
+              <p className="profile-role" style={{ fontWeight: 'bold', color: 'black' }}>Patient ID: HC-2024-001</p>
 
               <div className="profile-stats">
                 <div className="stat-item">
@@ -732,13 +732,7 @@ const ProfilePage = () => {
               <CreditCard size={18} />
               IC Verification
             </button>
-            <button
-              className={`tab-item ${activeTab === 'medical' ? 'active' : ''}`}
-              onClick={() => setActiveTab('medical')}
-            >
-              <Heart size={18} />
-              Medical Info
-            </button>
+
             <button
               className={`tab-item ${activeTab === 'settings' ? 'active' : ''}`}
               onClick={() => setActiveTab('settings')}
@@ -791,7 +785,7 @@ const ProfilePage = () => {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Phone Number</label>
+                    <label className="form-label">Gender</label>
                     <input
                       type="tel"
                       name="phone"
@@ -814,80 +808,7 @@ const ProfilePage = () => {
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label">Address</label>
-                    <input
-                      type="text"
-                      name="address"
-                      className="form-input"
-                      value={isEditing ? editData.address : profileData.address}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
 
-                  <div className="form-group">
-                    <label className="form-label">City</label>
-                    <input
-                      type="text"
-                      name="city"
-                      className="form-input"
-                      value={isEditing ? editData.city : profileData.city}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">State</label>
-                    <input
-                      type="text"
-                      name="state"
-                      className="form-input"
-                      value={isEditing ? editData.state : profileData.state}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">ZIP Code</label>
-                    <input
-                      type="text"
-                      name="zipCode"
-                      className="form-input"
-                      value={isEditing ? editData.zipCode : profileData.zipCode}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                </div>
-
-                <h3 className="section-title" style={{marginTop: '40px'}}>Emergency Contact</h3>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Emergency Contact Name</label>
-                    <input
-                      type="text"
-                      name="emergencyContact"
-                      className="form-input"
-                      value={isEditing ? editData.emergencyContact : profileData.emergencyContact}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Emergency Contact Phone</label>
-                    <input
-                      type="tel"
-                      name="emergencyPhone"
-                      className="form-input"
-                      value={isEditing ? editData.emergencyPhone : profileData.emergencyPhone}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
                 </div>
               </div>
             )}

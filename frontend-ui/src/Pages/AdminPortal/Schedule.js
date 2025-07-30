@@ -1,1285 +1,1506 @@
 import React, { useState, useRef, useEffect } from 'react';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin from '@fullcalendar/interaction';
-import {
-  Modal,
-  Button,
-  Select,
-  Input,
-  Radio,
-  InputNumber,
-  Row,
-  Col,
-  Alert,
-  Badge,
-  Space,
-  Typography,
-  TimePicker,
-  DatePicker,
-  message,
-  notification,
-} from 'antd';
-import 'antd/dist/reset.css';
-import dayjs from 'dayjs';
-import './css/Schedule.css';
-import Swal from 'sweetalert2';
-import { toast } from 'react-toastify';
-const { Option } = Select;
-const { Title, Text } = Typography;
+import { Calendar, Clock, Users, Plus, Settings, Filter, Bell, CheckCircle, XCircle, AlertCircle, Eye, Edit3, Trash2, Search, Download } from 'lucide-react';
 
-const weekdayOptions = [
-  { label: 'Monday', value: 1 },
-  { label: 'Tuesday', value: 2 },
-  { label: 'Wednesday', value: 3 },
-  { label: 'Thursday', value: 4 },
-  { label: 'Friday', value: 5 },
-  { label: 'Saturday', value: 6 },
-  { label: 'Sunday', value: 0 },
-];
-
-const Schedule = () => {
-  const [selectedEventObj, setSelectedEventObj] = useState(null);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [approvalStatus, setApprovalStatus] = useState('approved');
+const EnhancedSchedule = () => {
+  const [currentView, setCurrentView] = useState('month');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
-  const [showManageModal, setShowManageModal] = useState(false);
-  const [selectedWeekdays, setSelectedWeekdays] = useState([1, 2, 3, 4, 5]); // Monday to Friday
-  const [workingStartTime, setWorkingStartTime] = useState(dayjs('09:00', 'HH:mm'));
-  const [workingEndTime, setWorkingEndTime] = useState(dayjs('18:00', 'HH:mm'));
-  const [breakStartTime, setBreakStartTime] = useState(dayjs('13:00', 'HH:mm'));
-  const [breakEndTime, setBreakEndTime] = useState(dayjs('14:00', 'HH:mm'));
-  const [validYears, setValidYears] = useState(1);
-  const calendarRef = useRef();
-  const [showModal, setShowModal] = useState(false);
-  const [selectedDate, setSelectedDate] = useState('');
-  const [title, setTitle] = useState('');
-  const [startTime, setStartTime] = useState(null);
-  const [endTime, setEndTime] = useState(null);
+  // Schedule settings
+  const [scheduleSettings, setScheduleSettings] = useState({
+    workingDays: [1, 2, 3, 4, 5], // Monday to Friday
+    workingHours: { start: '09:00', end: '17:00' },
+    breakTime: { start: '13:00', end: '14:00' },
+    slotDuration: 30, // minutes
+    validityYears: 1
+  });
 
-
-  const [events, setEvents] = useState([
-    // Sample bookings for July 29, 2025 (Tuesday) - 10 appointments
+  // Sample appointments data
+  const [appointments, setAppointments] = useState([
     {
-      id: 'appointment-1',
-      title: 'John Smith - General Checkup',
-      start: '2025-07-29T09:00:00',
-      end: '2025-07-29T09:30:00',
-      backgroundColor: '#52c41a',
-      borderColor: '#52c41a',
-      textColor: '#fff',
-      status: 'approved'
+      id: 1,
+      patientName: 'John Smith',
+      patientEmail: 'john@email.com',
+      patientPhone: '+1234567890',
+      type: 'General Checkup',
+      date: '2025-07-30',
+      time: '09:00',
+      duration: 30,
+      status: 'pending',
+      notes: 'Regular checkup appointment',
+      createdAt: '2024-01-15'
     },
     {
-      id: 'appointment-2',
-      title: 'Mary Johnson - Blood Test',
-      start: '2025-07-29T09:30:00',
-      end: '2025-07-29T10:00:00',
-      backgroundColor: '#faad14',
-      borderColor: '#faad14',
-      textColor: '#fff',
-      status: 'pending'
+      id: 2,
+      patientName: 'Mary Johnson',
+      patientEmail: 'mary@email.com',
+      patientPhone: '+1234567891',
+      type: 'Blood Test',
+      date: '2025-07-30',
+      time: '10:00',
+      duration: 30,
+      status: 'approved',
+      notes: 'Follow-up blood work',
+      createdAt: '2024-01-14'
     },
     {
-      id: 'appointment-3',
-      title: 'Robert Brown - Follow-up',
-      start: '2025-07-29T10:00:00',
-      end: '2025-07-29T10:30:00',
-      backgroundColor: '#52c41a',
-      borderColor: '#52c41a',
-      textColor: '#fff',
-      status: 'approved'
+      id: 3,
+      patientName: 'Robert Brown',
+      patientEmail: 'robert@email.com',
+      patientPhone: '+1234567892',
+      type: 'Consultation',
+      date: '2025-07-30',
+      time: '11:00',
+      duration: 60,
+      status: 'rejected',
+      notes: 'Initial consultation',
+      createdAt: '2024-01-13'
     },
     {
-      id: 'appointment-4',
-      title: 'Lisa Wilson - Vaccination',
-      start: '2025-07-29T10:30:00',
-      end: '2025-07-29T11:00:00',
-      backgroundColor: '#ff4d4f',
-      borderColor: '#ff4d4f',
-      textColor: '#fff',
-      status: 'rejected'
-    },
-    {
-      id: 'appointment-5',
-      title: 'David Chen - Consultation',
-      start: '2025-07-29T11:00:00',
-      end: '2025-07-29T11:30:00',
-      backgroundColor: '#52c41a',
-      borderColor: '#52c41a',
-      textColor: '#fff',
-      status: 'approved'
-    },
-    {
-      id: 'appointment-6',
-      title: 'Emma Davis - X-Ray Review',
-      start: '2025-07-29T11:30:00',
-      end: '2025-07-29T12:00:00',
-      backgroundColor: '#faad14',
-      borderColor: '#faad14',
-      textColor: '#fff',
-      status: 'pending'
-    },
-    {
-      id: 'appointment-7',
-      title: 'Michael Lee - Physical Exam',
-      start: '2025-07-29T12:00:00',
-      end: '2025-07-29T12:30:00',
-      backgroundColor: '#52c41a',
-      borderColor: '#52c41a',
-      textColor: '#fff',
-      status: 'approved'
-    },
-    {
-      id: 'appointment-8',
-      title: 'Sarah Taylor - Prescription',
-      start: '2025-07-29T12:30:00',
-      end: '2025-07-29T13:00:00',
-      backgroundColor: '#faad14',
-      borderColor: '#faad14',
-      textColor: '#fff',
-      status: 'pending'
-    },
-    {
-      id: 'appointment-9',
-      title: 'James Miller - Lab Results',
-      start: '2025-07-29T14:00:00',
-      end: '2025-07-29T14:30:00',
-      backgroundColor: '#52c41a',
-      borderColor: '#52c41a',
-      textColor: '#fff',
-      status: 'approved'
-    },
-    {
-      id: 'appointment-10',
-      title: 'Anna Garcia - Dental Referral',
-      start: '2025-07-29T14:30:00',
-      end: '2025-07-29T15:00:00',
-      backgroundColor: '#ff4d4f',
-      borderColor: '#ff4d4f',
-      textColor: '#fff',
-      status: 'rejected'
-    },
-    // Additional sample appointments for other days
-    {
-      id: 'appointment-11',
-      title: 'Tom Wilson - Routine Check',
-      start: '2025-07-30T15:00:00',
-      end: '2025-07-30T15:30:00',
-      backgroundColor: '#52c41a',
-      borderColor: '#52c41a',
-      textColor: '#fff',
-      status: 'approved'
-    },
-    {
-      id: 'appointment-12',
-      title: 'Jennifer Martinez - Consultation',
-      start: '2025-07-31T16:00:00',
-      end: '2025-07-31T16:30:00',
-      backgroundColor: '#faad14',
-      borderColor: '#faad14',
-      textColor: '#fff',
-      status: 'pending'
+      id: 4,
+      patientName: 'Lisa Wilson',
+      patientEmail: 'lisa@email.com',
+      patientPhone: '+1234567893',
+      type: 'Vaccination',
+      date: '2025-07-31',
+      time: '14:00',
+      duration: 15,
+      status: 'approved',
+      notes: 'Annual flu vaccination',
+      createdAt: '2024-01-12'
     }
   ]);
 
-  // Generate default schedule on component mount
-  useEffect(() => {
-    generateDefaultSchedule();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Generate time slots for a given date
+  const generateTimeSlots = (date) => {
+    const slots = [];
+    const dayOfWeek = date.getDay();
 
+    if (!scheduleSettings.workingDays.includes(dayOfWeek)) {
+      return slots; // No slots for non-working days
+    }
 
+    const startHour = parseInt(scheduleSettings.workingHours.start.split(':')[0]);
+    const startMinute = parseInt(scheduleSettings.workingHours.start.split(':')[1]);
+    const endHour = parseInt(scheduleSettings.workingHours.end.split(':')[0]);
+    const endMinute = parseInt(scheduleSettings.workingHours.end.split(':')[1]);
 
-  const generateDefaultSchedule = () => {
-    const weekdays = [1, 2, 3, 4, 5]; // Monday to Friday
-    const today = new Date();
-    const futureDate = new Date();
-    futureDate.setFullYear(today.getFullYear() + 1);
+    const breakStartHour = parseInt(scheduleSettings.breakTime.start.split(':')[0]);
+    const breakStartMinute = parseInt(scheduleSettings.breakTime.start.split(':')[1]);
+    const breakEndHour = parseInt(scheduleSettings.breakTime.end.split(':')[0]);
+    const breakEndMinute = parseInt(scheduleSettings.breakTime.end.split(':')[1]);
 
-    const tempEvents = [];
-    const workingStart = '09:00';
-    const workingEnd = '18:00';
-    const breakStart = '13:00';
-    const breakEnd = '14:00';
+    const totalMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+    const slotsCount = Math.floor(totalMinutes / scheduleSettings.slotDuration);
 
-    console.log('Generating default schedule with times:', {
-      workingStart, workingEnd, breakStart, breakEnd
-    });
+    for (let i = 0; i < slotsCount; i++) {
+      const slotStartMinutes = startHour * 60 + startMinute + (i * scheduleSettings.slotDuration);
+      const slotEndMinutes = slotStartMinutes + scheduleSettings.slotDuration;
 
-    for (let d = new Date(today); d <= futureDate; d.setDate(d.getDate() + 1)) {
-      const day = d.getDay();
-      const dateStr = d.toISOString().split("T")[0];
-      const isWorkingDay = weekdays.includes(day);
+      const slotStartHour = Math.floor(slotStartMinutes / 60);
+      const slotStartMin = slotStartMinutes % 60;
+      const slotEndHour = Math.floor(slotEndMinutes / 60);
+      const slotEndMin = slotEndMinutes % 60;
 
-      if (isWorkingDay) {
-        // Month view - highlight working days in green
-        tempEvents.push({
-          id: `working-day-${dateStr}`,
-          start: dateStr,
-          allDay: true,
-          display: "background",
-          backgroundColor: "rgba(40, 167, 69, 0.3)",
-          classNames: ['working-day-bg']
-        });
+      // Check if slot overlaps with break time
+      const isBreakTime = (
+        (slotStartHour * 60 + slotStartMin) >= (breakStartHour * 60 + breakStartMinute) &&
+        (slotStartHour * 60 + slotStartMin) < (breakEndHour * 60 + breakEndMinute)
+      );
 
-        // Create the three time blocks using the same logic
-        const timeBlocks = createOptimizedTimeBlocks(dateStr, workingStart, workingEnd, breakStart, breakEnd);
-        tempEvents.push(...timeBlocks);
-      } else {
-        // Non-working day - red background for month view
-        tempEvents.push({
-          id: `non-working-day-${dateStr}`,
-          start: dateStr,
-          allDay: true,
-          display: "background",
-          backgroundColor: "rgba(220, 53, 69, 0.3)",
-          classNames: ['non-working-day-bg']
+      if (!isBreakTime) {
+        const timeString = `${slotStartHour.toString().padStart(2, '0')}:${slotStartMin.toString().padStart(2, '0')}`;
+        const dateString = date.toISOString().split('T')[0];
+
+        // Check if slot is booked
+        const bookedAppointment = appointments.find(apt =>
+          apt.date === dateString && apt.time === timeString && apt.status === 'approved'
+        );
+
+        slots.push({
+          time: timeString,
+          endTime: `${slotEndHour.toString().padStart(2, '0')}:${slotEndMin.toString().padStart(2, '0')}`,
+          available: !bookedAppointment,
+          appointment: bookedAppointment
         });
       }
     }
 
-    console.log(`Default schedule: Generated ${tempEvents.length} total events`);
-
-    // Add schedule events to existing appointments
-    setEvents((prevEvents) => {
-      // Filter out any existing schedule events first
-      const filteredEvents = prevEvents.filter((e) => {
-        const isScheduleEvent = (
-          e.display === 'background' ||
-          e.classNames?.some(className =>
-            ['working-day-bg', 'non-working-day-bg', 'time-block', 'availability-block'].includes(className)
-          ) ||
-          e.extendedProps?.isAvailability ||
-          e.id?.includes('working-day-') ||
-          e.id?.includes('non-working-day-') ||
-          e.id?.includes('available-') ||
-          e.id?.includes('break-')
-        );
-        return !isScheduleEvent;
-      });
-
-      console.log(`Default schedule: Keeping ${filteredEvents.length} appointments, adding ${tempEvents.length} schedule events`);
-      return [...filteredEvents, ...tempEvents];
-    });
+    return slots;
   };
 
-  const handleGenerateSchedule = () => {
-    const weekdays = selectedWeekdays;
+  // Filter appointments based on search and status
+  const filteredAppointments = appointments.filter(apt => {
+    const matchesSearch = apt.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         apt.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         apt.patientEmail.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || apt.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Get appointments for a specific date
+  const getAppointmentsForDate = (date) => {
+    const dateString = date.toISOString().split('T')[0];
+    return appointments.filter(apt => apt.date === dateString);
+  };
+
+  // Calendar component
+  const CalendarView = () => {
     const today = new Date();
-    const futureDate = new Date();
-    futureDate.setFullYear(today.getFullYear() + validYears);
+    const currentMonth = selectedDate.getMonth();
+    const currentYear = selectedDate.getFullYear();
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
 
-    const tempEvents = [];
+    const days = [];
 
-    // Get the formatted times
-    const workingStart = workingStartTime?.format('HH:mm');
-    const workingEnd = workingEndTime?.format('HH:mm');
-    const breakStart = breakStartTime?.format('HH:mm');
-    const breakEnd = breakEndTime?.format('HH:mm');
-
-    console.log('Custom schedule generation with times:', {
-      workingStart, workingEnd, breakStart, breakEnd, weekdays
-    });
-
-    for (let d = new Date(today); d <= futureDate; d.setDate(d.getDate() + 1)) {
-      const day = d.getDay();
-      const dateStr = d.toISOString().split("T")[0];
-      const isWorkingDay = weekdays.includes(day);
-
-      if (isWorkingDay) {
-        // Month view - highlight working days in green
-        tempEvents.push({
-          id: `working-day-${dateStr}`,
-          start: dateStr,
-          allDay: true,
-          display: "background",
-          backgroundColor: "rgba(40, 167, 69, 0.3)",
-          classNames: ['working-day-bg']
-        });
-
-        // Create time blocks
-        if (workingStart && workingEnd) {
-          const timeBlocks = createOptimizedTimeBlocks(dateStr, workingStart, workingEnd, breakStart, breakEnd);
-          tempEvents.push(...timeBlocks);
-        }
-      } else {
-        // Non-working day - red background for month view
-        tempEvents.push({
-          id: `non-working-day-${dateStr}`,
-          start: dateStr,
-          allDay: true,
-          display: "background",
-          backgroundColor: "rgba(220, 53, 69, 0.3)",
-          classNames: ['non-working-day-bg']
-        });
-      }
+    // Empty cells for days before month starts
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
     }
 
-    console.log(`Custom schedule: Generated ${tempEvents.length} total events`);
+    // Days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(currentYear, currentMonth, day));
+    }
 
-    // Replace all schedule events with new ones
-    setEvents((prevEvents) => {
-      const filteredEvents = prevEvents.filter((e) => {
-        const isScheduleEvent = (
-          e.display === 'background' ||
-          e.classNames?.some(className =>
-            ['working-day-bg', 'non-working-day-bg', 'time-block', 'availability-block'].includes(className)
-          ) ||
-          e.extendedProps?.isAvailability ||
-          e.id?.includes('working-day-') ||
-          e.id?.includes('non-working-day-') ||
-          e.id?.includes('available-') ||
-          e.id?.includes('break-')
-        );
-        return !isScheduleEvent;
-      });
-
-      console.log(`Custom schedule: Keeping ${filteredEvents.length} appointments, adding ${tempEvents.length} new schedule events`);
-      return [...filteredEvents, ...tempEvents];
-    });
-
-    setShowManageModal(false);
-  };
-
-  // Better approach: Create fewer, larger blocks to minimize overlapping
-  const createOptimizedTimeBlocks = (dateStr, workingStart, workingEnd, breakStart, breakEnd) => {
-    const blocks = [];
-
-    // Helper function to ensure proper time format
-    const formatTime = (timeStr) => {
-      if (!timeStr || timeStr === 'undefined') return null;
-      return timeStr.length > 5 ? timeStr.substring(0, 5) : timeStr;
+    const navigateMonth = (direction) => {
+      const newDate = new Date(selectedDate);
+      newDate.setMonth(newDate.getMonth() + direction);
+      setSelectedDate(newDate);
     };
 
-    const formattedWorkingStart = formatTime(workingStart);
-    const formattedWorkingEnd = formatTime(workingEnd);
-    const formattedBreakStart = formatTime(breakStart);
-    const formattedBreakEnd = formatTime(breakEnd);
+    return (
+      <div className="schedule-calendar">
+        <div className="schedule-calendar-header">
+          <button onClick={() => navigateMonth(-1)} className="schedule-nav-btn">‹</button>
+          <h3>{selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h3>
+          <button onClick={() => navigateMonth(1)} className="schedule-nav-btn">›</button>
+        </div>
 
-    // Validate that we have working times
-    if (!formattedWorkingStart || !formattedWorkingEnd) {
-      console.log(`Skipping ${dateStr}: Missing working times`);
-      return blocks;
-    }
+        <div className="schedule-calendar-grid">
+          <div className="schedule-weekdays">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              <div key={day} className="schedule-weekday">{day}</div>
+            ))}
+          </div>
 
-    // Check if we have valid break times within working hours
-    const hasValidBreak = formattedBreakStart && formattedBreakEnd &&
-      formattedBreakStart >= formattedWorkingStart &&
-      formattedBreakEnd <= formattedWorkingEnd &&
-      formattedBreakStart < formattedBreakEnd;
+          <div className="schedule-days">
+            {days.map((date, index) => {
+              if (!date) return <div key={index} className="schedule-day empty"></div>;
 
-    if (hasValidBreak) {
-      // Working period before break
-      if (formattedBreakStart > formattedWorkingStart) {
-        blocks.push({
-           id: `available-morning-${dateStr}`,
-           title: '● Available',
-           start: `${dateStr}T${formattedWorkingStart}:00`,
-           end: `${dateStr}T${formattedBreakStart}:00`,
-           display: 'block',
-           classNames: ['availability-block'],
-           extendedProps: { isAvailability: true }
-         });
-      }
+              const dayAppointments = getAppointmentsForDate(date);
+              const isToday = date.toDateString() === today.toDateString();
+              const isWorkingDay = scheduleSettings.workingDays.includes(date.getDay());
 
-      // Break period
-      blocks.push({
-        id: `break-${dateStr}`,
-        title: 'Break Time', // ✅ remove ●
-        start: `${dateStr}T${formattedBreakStart}:00`,
-        end: `${dateStr}T${formattedBreakEnd}:00`,
-        display: 'block',
-        classNames: ['availability-block', 'break-block'],
-        extendedProps: {
-          isBreak: true,
-          isAvailability: true // ✅ add this
-        }
-      });
-
-      // Working period after break
-      if (formattedBreakEnd < formattedWorkingEnd) {
-        blocks.push({
-          id: `available-afternoon-${dateStr}`,
-          title: '● Available',
-          start: `${dateStr}T${formattedBreakEnd}:00`,
-          end: `${dateStr}T${formattedWorkingEnd}:00`,
-          backgroundColor: 'rgba(40, 167, 69, 0.8)',
-          borderColor: '#28a745',
-          textColor: '#ffffff',
-          display: 'block',
-          classNames: ['availability-block'],
-          extendedProps: { isAvailability: true }
-        });
-      }
-
-      // Log the three blocks for this date (only show first few dates to avoid spam)
-      if (dateStr <= '2025-08-05') {
-        console.log(`${dateStr} - Three blocks created: ${formattedWorkingStart}-${formattedBreakStart} (Available), ${formattedBreakStart}-${formattedBreakEnd} (Break), ${formattedBreakEnd}-${formattedWorkingEnd} (Available)`);
-      }
-    } else {
-      // No break - single availability block
-      blocks.push({
-        id: `available-full-${dateStr}`,
-        title: '● Available',
-        start: `${dateStr}T${formattedWorkingStart}:00`,
-        end: `${dateStr}T${formattedWorkingEnd}:00`,
-        backgroundColor: 'rgba(40, 167, 69, 0.8)',
-        borderColor: '#28a745',
-        textColor: '#ffffff',
-        display: 'block',
-        classNames: ['availability-block'],
-        extendedProps: { isAvailability: true }
-      });
-
-      if (dateStr <= '2025-08-05') {
-        console.log(`${dateStr} - Single block created: ${formattedWorkingStart}-${formattedWorkingEnd} (Available)`);
-      }
-    }
-
-    return blocks;
+              return (
+                <div
+                  key={index}
+                  className={`schedule-day ${isToday ? 'today' : ''} ${isWorkingDay ? 'working-day' : 'non-working-day'}`}
+                  onClick={() => setSelectedDate(date)}
+                >
+                  <span className="schedule-day-number">{date.getDate()}</span>
+                  {dayAppointments.length > 0 && (
+                    <div className="schedule-day-appointments">
+                      {dayAppointments.slice(0, 2).map(apt => (
+                        <div key={apt.id} className={`schedule-appointment-dot ${apt.status}`}></div>
+                      ))}
+                      {dayAppointments.length > 2 && (
+                        <span className="schedule-more-appointments">+{dayAppointments.length - 2}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
   };
 
-  const handleDateChange = (date, dateString) => {
-    if (calendarRef.current && dateString) {
-      const calendarApi = calendarRef.current.getApi();
-      calendarApi.gotoDate(dateString);
-    }
+  // Day view component
+  const DayView = () => {
+    const timeSlots = generateTimeSlots(selectedDate);
+    const dayAppointments = getAppointmentsForDate(selectedDate);
+
+    return (
+      <div className="schedule-day-view">
+        <div className="schedule-day-header">
+          <h3>{selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h3>
+          <div className="schedule-day-stats">
+            <span className="schedule-stat">
+              <CheckCircle size={16} />
+              {dayAppointments.filter(apt => apt.status === 'approved').length} Approved
+            </span>
+            <span className="schedule-stat">
+              <AlertCircle size={16} />
+              {dayAppointments.filter(apt => apt.status === 'pending').length} Pending
+            </span>
+          </div>
+        </div>
+
+        <div className="schedule-time-slots">
+          {timeSlots.length === 0 ? (
+            <div className="schedule-no-slots">
+              <Calendar size={48} />
+              <p>No working hours scheduled for this day</p>
+            </div>
+          ) : (
+            timeSlots.map((slot, index) => (
+              <div key={index} className={`schedule-time-slot ${slot.available ? 'available' : 'booked'}`}>
+                <div className="schedule-slot-time">
+                  <Clock size={16} />
+                  <span>{slot.time} - {slot.endTime}</span>
+                </div>
+                <div className="schedule-slot-content">
+                  {slot.appointment ? (
+                    <div className="schedule-appointment-info">
+                      <div className="schedule-appointment-patient">
+                        <Users size={14} />
+                        <span>{slot.appointment.patientName}</span>
+                      </div>
+                      <div className="schedule-appointment-type">{slot.appointment.type}</div>
+                      <div className="schedule-appointment-actions">
+                        <button
+                          className="schedule-action-btn view"
+                          onClick={() => {
+                            setSelectedAppointment(slot.appointment);
+                            setShowReviewModal(true);
+                          }}
+                        >
+                          <Eye size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="schedule-available-slot">
+                      <span>Available for booking</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
   };
 
-  const handleDateClick = (arg) => {
-    setSelectedDate(arg.dateStr);
-    setShowModal(true);
-  };
+  // Appointment list component
+  const AppointmentsList = () => (
+    <div className="schedule-appointments-list">
+      <div className="schedule-list-header">
+        <h3>All Appointments</h3>
+        <div className="schedule-list-controls">
+          <div className="schedule-search-container">
+            <Search size={16} />
+            <input
+              type="text"
+              placeholder="Search appointments..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="schedule-search-input"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="schedule-filter-select"
+          >
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+      </div>
 
-  const handleSubmit = () => {
-    if (!title || !startTime || !endTime) return;
-
-    const start = `${selectedDate}T${startTime.format('HH:mm')}:00`;
-    const end = `${selectedDate}T${endTime.format('HH:mm')}:00`;
-
-    setEvents((prev) => [
-      ...prev,
-      {
-        id: `appointment-${Date.now()}`,
-        title: title,
-        start,
-        end,
-        backgroundColor: '#1890ff',
-        borderColor: '#1890ff',
-        textColor: '#fff',
-        status: 'pending'
-      },
-    ]);
-
-    setShowModal(false);
-    setTitle('');
-    setStartTime(null);
-    setEndTime(null);
-  };
-
-  const resetManageForm = () => {
-    setSelectedWeekdays([]);
-    setWorkingStartTime(null);
-    setWorkingEndTime(null);
-    setBreakStartTime(null);
-    setBreakEndTime(null);
-    setValidYears(1);
-  };
-
-  // Function to update availability when an appointment is approved
-  const updateAvailabilityForApprovedAppointment = (eventDate, eventStart, eventEnd) => {
-    setEvents(prevEvents => {
-      // Get all existing booked appointments for this date
-      const existingBookedAppointments = prevEvents.filter(event =>
-        event.extendedProps?.isBooked &&
-        event.start &&
-        event.start.toString().startsWith(eventDate)
-      );
-
-      // Get all other events (non-availability, non-booked for this date)
-      const otherEvents = prevEvents.filter(event =>
-        !(event.extendedProps?.isAvailability &&
-          event.start &&
-          event.start.toString().startsWith(eventDate))
-      );
-
-      // Get the working hours for this date
-      const workingStart = '09:00';
-      const workingEnd = '18:00';
-      const breakStart = '13:00';
-      const breakEnd = '14:00';
-
-      // Add the new appointment to the list of booked appointments
-      const allBookedAppointments = [
-        ...existingBookedAppointments,
-        {
-          id: `booked-${eventDate}-${eventStart.split('T')[1].substring(0, 5)}`,
-          title: 'Booked',
-          start: eventStart,
-          end: eventEnd,
-          display: 'block',
-          classNames: ['availability-block', 'booked-block'],
-          extendedProps: {
-            isBooked: true,
-            isAvailability: true
-          }
-        }
-      ];
-
-      // Sort all booked appointments by start time
-      allBookedAppointments.sort((a, b) => new Date(a.start) - new Date(b.start));
-
-      const newAvailabilityBlocks = [];
-
-      // Always add the break block
-      newAvailabilityBlocks.push({
-        id: `break-${eventDate}`,
-        title: 'Break Time',
-        start: `${eventDate}T${breakStart}:00`,
-        end: `${eventDate}T${breakEnd}:00`,
-        display: 'block',
-        classNames: ['availability-block', 'break-block'],
-        extendedProps: {
-          isBreak: true,
-          isAvailability: true
-        }
-      });
-
-      // Split the day into two segments: before break and after break
-      // Collect booked appointments for each segment
-      const morningBookings = allBookedAppointments.filter(a => a.start.split('T')[1].substring(0,5) < breakStart);
-      const afternoonBookings = allBookedAppointments.filter(a => a.start.split('T')[1].substring(0,5) >= breakEnd);
-
-      // --- MORNING (before break) ---
-      let currentTime = workingStart;
-      for (let i = 0; i < morningBookings.length; i++) {
-        const appointment = morningBookings[i];
-        const appointmentStart = appointment.start.split('T')[1].substring(0, 5);
-        const appointmentEnd = appointment.end.split('T')[1].substring(0, 5);
-        // Add available block before this appointment
-        if (currentTime < appointmentStart) {
-          newAvailabilityBlocks.push({
-            id: `available-before-${eventDate}-morning-${i}`,
-            title: '● Available',
-            start: `${eventDate}T${currentTime}:00`,
-            end: appointment.start,
-            display: 'block',
-            classNames: ['availability-block'],
-            extendedProps: { isAvailability: true }
-          });
-        }
-        // Add the booked appointment
-        newAvailabilityBlocks.push(appointment);
-        currentTime = appointmentEnd;
-      }
-      // Available block after last morning booking, up to breakStart
-      if (currentTime < breakStart) {
-        newAvailabilityBlocks.push({
-          id: `available-before-break-${eventDate}`,
-          title: '● Available',
-          start: `${eventDate}T${currentTime}:00`,
-          end: `${eventDate}T${breakStart}:00`,
-          display: 'block',
-          classNames: ['availability-block'],
-          extendedProps: { isAvailability: true }
-        });
-      }
-
-      // --- AFTERNOON (after break) ---
-      currentTime = breakEnd;
-      for (let i = 0; i < afternoonBookings.length; i++) {
-        const appointment = afternoonBookings[i];
-        const appointmentStart = appointment.start.split('T')[1].substring(0, 5);
-        const appointmentEnd = appointment.end.split('T')[1].substring(0, 5);
-        // Add available block before this appointment
-        if (currentTime < appointmentStart) {
-          newAvailabilityBlocks.push({
-            id: `available-after-break-${eventDate}-afternoon-${i}`,
-            title: '● Available',
-            start: `${eventDate}T${currentTime}:00`,
-            end: appointment.start,
-            display: 'block',
-            classNames: ['availability-block'],
-            extendedProps: { isAvailability: true }
-          });
-        }
-        // Add the booked appointment
-        newAvailabilityBlocks.push(appointment);
-        currentTime = appointmentEnd;
-      }
-      // Available block after last afternoon booking, up to workingEnd
-      if (currentTime < workingEnd) {
-        newAvailabilityBlocks.push({
-          id: `available-after-last-appointment-${eventDate}`,
-          title: '● Available',
-          start: `${eventDate}T${currentTime}:00`,
-          end: `${eventDate}T${workingEnd}:00`,
-          display: 'block',
-          classNames: ['availability-block'],
-          extendedProps: { isAvailability: true }
-        });
-      }
-
-      return [...otherEvents, ...newAvailabilityBlocks];
-    });
-  };
-
+      <div className="schedule-appointments-table">
+        {filteredAppointments.length === 0 ? (
+          <div className="schedule-no-appointments">
+            <Users size={48} />
+            <p>No appointments found</p>
+          </div>
+        ) : (
+          filteredAppointments.map(appointment => (
+            <div key={appointment.id} className="schedule-appointment-row">
+              <div className="schedule-appointment-info">
+                <div className="schedule-appointment-main">
+                  <h4>{appointment.patientName}</h4>
+                  <p>{appointment.type}</p>
+                </div>
+                <div className="schedule-appointment-details">
+                  <span className="schedule-appointment-date">
+                    <Calendar size={14} />
+                    {new Date(appointment.date).toLocaleDateString()}
+                  </span>
+                  <span className="schedule-appointment-time">
+                    <Clock size={14} />
+                    {appointment.time}
+                  </span>
+                  <span className={`schedule-appointment-status ${appointment.status}`}>
+                    {appointment.status === 'approved' && <CheckCircle size={14} />}
+                    {appointment.status === 'pending' && <AlertCircle size={14} />}
+                    {appointment.status === 'rejected' && <XCircle size={14} />}
+                    {appointment.status}
+                  </span>
+                </div>
+              </div>
+              <div className="schedule-appointment-actions">
+                <button
+                  className="schedule-action-btn view"
+                  onClick={() => {
+                    setSelectedAppointment(appointment);
+                    setShowReviewModal(true);
+                  }}
+                >
+                  <Eye size={14} />
+                  View
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 
   return (
+    <div className="schedule-container">
+      <div className="schedule-header">
+        <div className="schedule-title-section">
+          <h2>Doctor Schedule Management</h2>
+          <p>Manage appointments and working hours</p>
+        </div>
+        <div className="schedule-actions">
+          <button
+            className="schedule-btn secondary"
+            onClick={() => setShowScheduleModal(true)}
+          >
+            <Settings size={16} />
+            Schedule Settings
+          </button>
+          <button className="schedule-btn secondary">
+            <Download size={16} />
+            Export
+          </button>
+        </div>
+      </div>
 
-    <div className="container-fluid" style={{ paddingTop: '0px' }}>
-
-      <div className="row column_title">
-        <div className="col-md-12">
-          <div className="page_title d-flex justify-content-between align-items-center"
-               style={{
-                 padding: '20px 0',
-                 marginBottom: '20px',
-                 borderBottom: '1px solid #f0f0f0'
-               }}>
-            <Title level={2} style={{ margin: 10 }}>Doctor Schedule</Title>
-            <Space>
-              <DatePicker onChange={handleDateChange} />
-              <Button type="primary" onClick={() => setShowManageModal(true)}>
-                Manage Schedule
-              </Button>
-            </Space>
+      <div className="schedule-stats">
+        <div className="schedule-stat-card pending">
+          <div className="schedule-stat-icon">
+            <AlertCircle size={24} />
+          </div>
+          <div className="schedule-stat-content">
+            <h3>{appointments.filter(apt => apt.status === 'pending').length}</h3>
+            <p>Pending Appointments</p>
+          </div>
+        </div>
+        <div className="schedule-stat-card approved">
+          <div className="schedule-stat-icon">
+            <CheckCircle size={24} />
+          </div>
+          <div className="schedule-stat-content">
+            <h3>{appointments.filter(apt => apt.status === 'approved').length}</h3>
+            <p>Approved Today</p>
+          </div>
+        </div>
+        <div className="schedule-stat-card total">
+          <div className="schedule-stat-icon">
+            <Calendar size={24} />
+          </div>
+          <div className="schedule-stat-content">
+            <h3>{appointments.length}</h3>
+            <p>Total Appointments</p>
           </div>
         </div>
       </div>
 
-      <div className="container" style={{ marginTop: '10px' }}>
-        <div style={{
-          position: 'relative',
-          zIndex: 1,
-          backgroundColor: '#fff',
-          borderRadius: '8px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          padding: '20px',
-          marginBottom: '20px'
-        }}>
-        <FullCalendar
-          ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
-          headerToolbar={{
-            start: 'prev,next today',
-            center: 'title',
-            end: 'dayGridMonth,timeGridWeek,timeGridDay',
-          }}
-          events={events}
-          dateClick={handleDateClick}
-          height="auto"
-          views={{
-            dayGridMonth: {
-              displayEventEnd: true,
-              dayMaxEvents: 3, // Show only 3 events, then "+X more" link
-              moreLinkClick: 'popover', // Show popover when clicking "+X more"
-            },
-            timeGridWeek: {
-              displayEventEnd: true,
-              slotMinTime: '08:00:00',
-              slotMaxTime: '19:00:00',
-              eventDisplay: 'block',
-              slotDuration: '00:30:00', // 30-minute time slots
-              slotLabelInterval: '01:00:00', // Show hour labels
-              eventMaxStack: 3, // Limit event stacking
-            },
-            timeGridDay: {
-              displayEventEnd: true,
-              slotMinTime: '08:00:00',
-              slotMaxTime: '19:00:00',
-              eventDisplay: 'block',
-              slotDuration: '00:15:00', // 15-minute time slots for detailed view
-              slotLabelInterval: '01:00:00',
-              eventMaxStack: 1, // Single column in day view
-            },
-          }}
-          eventClick={(info) => {
-            const event = info.event;
-
-            // Don't show modal for availability blocks, booked blocks, or background events
-            if (event.extendedProps?.status === 'approved' || event.extendedProps?.status === 'rejected'){
-
-                               toast.error('This appointment is already approved and cannot be deleted.');
-
-                        return;
-             }
-
-            if (event.extendedProps?.isAvailability) return;
-
-            if (event.display === 'background') return;
-
-
-            setSelectedEvent({
-              id: event.id,
-              title: event.title,
-              start: event.startStr,
-              end: event.endStr,
-              status: event.extendedProps?.status || 'pending',
-            });
-
-            setSelectedEventObj(event);
-            setApprovalStatus(event.extendedProps?.status || 'pending');
-            setShowReviewModal(true);
-          }}
-
-          // Add day cell content to show appointment count
-          dayCellContent={(arg) => {
-            // Get the date in YYYY-MM-DD format (local timezone)
-            const year = arg.date.getFullYear();
-            const month = String(arg.date.getMonth() + 1).padStart(2, '0');
-            const day = String(arg.date.getDate()).padStart(2, '0');
-            const dateStr = `${year}-${month}-${day}`;
-
-            // Filter events for this specific date
-            const dayEvents = events.filter(event => {
-              if (!event.start || event.extendedProps?.isAvailability || event.extendedProps?.isBooked || event.display === 'background') {
-                return false;
-              }
-
-              // Handle both string and Date object formats
-              let eventDateStr;
-              if (typeof event.start === 'string') {
-                eventDateStr = event.start.split('T')[0];
-              } else if (event.start instanceof Date) {
-                const eventYear = event.start.getFullYear();
-                const eventMonth = String(event.start.getMonth() + 1).padStart(2, '0');
-                const eventDay = String(event.start.getDate()).padStart(2, '0');
-                eventDateStr = `${eventYear}-${eventMonth}-${eventDay}`;
-              } else {
-                return false;
-              }
-
-              // Exact date match
-              return eventDateStr === dateStr;
-            });
-
-            if (arg.view.type === 'dayGridMonth' && dayEvents.length > 0) {
-              return {
-                html: `
-                  <div style="position: relative; height: 100%; width: 100%;">
-                    <div style={{
-                           position: 'absolute',
-                           top: '2px',
-                           left: '4px',
-                           fontWeight: 'bold',
-                           fontFamily: 'inherit', // Or specify like 'Arial, sans-serif'
-                           fontSize: '14px'
-                         }}>${arg.dayNumberText}</div>
-                    <div style="
-                      position: absolute;
-                      top: 2px;
-                      right: 120px;
-                      background: #1890ff;
-                      color: white;
-                      border-radius: 50%;
-                      width: 18px;
-                      height: 18px;
-                      font-size: 11px;
-                      display: flex;
-                      align-items: center;
-                      justify-content: center;
-                      font-weight: bold;
-                      z-index: 10;
-                    ">${dayEvents.length}</div>
-                  </div>
-                `
-              };
-            }
-            return { html: `<div>${arg.dayNumberText}</div>` };
-          }}
-
-
-
-
-
-          eventContent={(arg) => {
-            // Don't customize background events
-            if (arg.event.display === 'background') return null;
-
-            // Show green dot for approved booked blocks
-            if (arg.event.extendedProps?.isBooked && arg.event.extendedProps?.status === 'approved') {
-              return {
-                html: `<div style="display: flex; align-items: center; gap: 4px; font-size: 11px; padding: 1px 3px;"><span style=\"width: 6px; height: 6px; background-color: #52c41a; border-radius: 50%; display: inline-block; flex-shrink: 0;\"></span><span>Booked</span></div>`
-              };
-            }
-
-            // Don't customize availability blocks (let them show their title)
-            if (arg.event.extendedProps?.isAvailability) {
-              return { html: `<div style="font-size: 11px; padding: 1px 3px;">${arg.event.title}</div>` };
-            }
-
-            const status = arg.event.extendedProps?.status || 'pending';
-            const isRejected = status === 'rejected';
-            const isApproved = status === 'approved';
-            const isPending = status === 'pending';
-
-            return (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  maxWidth: '100%',
-                  padding: '2px 4px',
-                  fontSize: '11px'
-                }}
-              >
-                {isApproved && (
-                  <span
-                    style={{
-                      width: '6px',
-                      height: '6px',
-                      backgroundColor: '#52c41a',
-                      borderRadius: '50%',
-                      display: 'inline-block',
-                      flexShrink: 0,
-                    }}
-                  />
-                )}
-                {isPending && (
-                  <span
-                    style={{
-                      width: '6px',
-                      height: '6px',
-                      backgroundColor: '#faad14',
-                      borderRadius: '50%',
-                      display: 'inline-block',
-                      flexShrink: 0,
-                    }}
-                  />
-                )}
-                <span
-                  style={{
-                    textDecoration: isRejected ? 'line-through' : 'none',
-                    color: isRejected ? '#ff4d4f' : 'inherit',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {arg.event.title}
-                </span>
-              </div>
-            );
-          }}
-          // Add custom CSS to reduce gaps between events
-          eventDidMount={(info) => {
-            const { isBreak, isAvailability, isBooked } = info.event.extendedProps || {};
-
-            // Remove FullCalendar's default dot (some themes/views show it)
-            const dotEl = info.el.querySelector('.fc-event-dot');
-            if (dotEl) dotEl.style.display = 'none';
-
-            // Remove any leading "● " you put in the title
-            const titleEl = info.el.querySelector('.fc-event-title, .fc-event-title-container, .fc-event-main');
-            if (titleEl && titleEl.textContent) {
-              titleEl.textContent = titleEl.textContent.replace(/^●\s*/, '');
-            }
-
-            // Booked FIRST, then Break, then availability
-            if (isBooked) {
-              info.el.classList.add('booked-block');
-              info.el.style.backgroundColor = 'rgba(220, 53, 69, 0.8)'; // red (same as break)
-              info.el.style.borderColor = '#dc3545';
-              info.el.style.color = 'white';
-            } else if (isBreak) {
-              info.el.classList.add('break-block');
-              info.el.style.backgroundColor = 'rgba(220, 53, 69, 0.8)'; // red
-              info.el.style.borderColor = '#dc3545';
-              info.el.style.color = 'white';
-            } else if (isAvailability) {
-              info.el.classList.add('availability-block');
-              info.el.style.backgroundColor = 'rgba(40, 167, 69, 0.8)'; // green
-              info.el.style.borderColor = '#28a745';
-              info.el.style.color = 'white';
-            } else {
-              // Real appointments (interactive)
-              info.el.style.fontSize = '11px';
-              info.el.style.fontWeight = '500';
-              info.el.style.zIndex = '2';
-              info.el.addEventListener('mouseenter', () => {
-                info.el.style.transform = 'scale(1.02)';
-                info.el.style.zIndex = '10';
-                info.el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-              });
-              info.el.addEventListener('mouseleave', () => {
-                info.el.style.transform = 'scale(1)';
-                info.el.style.zIndex = '2';
-                info.el.style.boxShadow = 'none';
-              });
-              return; // don't apply the non-interactive styling below
-            }
-
-            // Common styling for visual-only blocks (available + break + booked)
-            info.el.style.height = '100%';
-            info.el.style.display = 'block';
-            info.el.style.pointerEvents = 'none'; // non-interactive
-            info.el.style.userSelect = 'none';
-          }}
-          // Custom CSS to ensure calendar doesn't overlap navigation
-          customClassNames={{
-            calendar: 'custom-fullcalendar'
-          }}
-        />
+      <div className="schedule-view-controls">
+        <div className="schedule-view-tabs">
+          <button
+            className={`schedule-tab ${currentView === 'month' ? 'active' : ''}`}
+            onClick={() => setCurrentView('month')}
+          >
+            <Calendar size={16} />
+            Month View
+          </button>
+          <button
+            className={`schedule-tab ${currentView === 'day' ? 'active' : ''}`}
+            onClick={() => setCurrentView('day')}
+          >
+            <Clock size={16} />
+            Day View
+          </button>
+          <button
+            className={`schedule-tab ${currentView === 'list' ? 'active' : ''}`}
+            onClick={() => setCurrentView('list')}
+          >
+            <Users size={16} />
+            Appointments List
+          </button>
         </div>
-
-        {/* Add custom CSS styles */}
-        <style jsx>{`
-          .custom-fullcalendar {
-            position: relative !important;
-            z-index: 1 !important;
-          }
-
-          .fc-header-toolbar {
-            position: relative !important;
-            z-index: 2 !important;
-            background: white;
-            padding: 10px 0;
-            margin-bottom: 10px !important;
-          }
-
-          .fc-view-harness {
-            position: relative !important;
-            z-index: 1 !important;
-          }
-
-          .fc-daygrid-event-harness,
-          .fc-timegrid-event-harness {
-            z-index: 2 !important;
-          }
-
-          .fc-popover {
-            z-index: 1000 !important;
-          }
-
-          .fc-more-popover {
-            z-index: 1000 !important;
-          }
-
-          /* Ensure modal z-index is higher than sticky nav */
-
-
-          /* Fix for sticky navigation overlap */
-          .fc-toolbar {
-            position: relative !important;
-            z-index: 2 !important;
-          }
-
-          /* Calendar container adjustments */
-          .fc {
-            margin-top: 0 !important;
-          }
-
-          /* Ensure calendar events don't go behind nav */
-          .fc-event {
-            position: relative !important;
-          }
-
-          /* Custom scrollbar for better appearance */
-          .fc-scroller::-webkit-scrollbar {
-            width: 6px;
-          }
-
-          .fc-scroller::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 3px;
-          }
-
-          .fc-scroller::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 3px;
-          }
-
-          .fc-scroller::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-          }
-        `}</style>
-
-        {/* Add Appointment Modal */}
-        <Modal
-          title={`Add Appointment for ${selectedDate}`}
-          open={showModal}
-          onCancel={() => {
-            setShowModal(false);
-            setTitle('');
-            setStartTime(null);
-            setEndTime(null);
-          }}
-          footer={[
-            <Button key="cancel" onClick={() => setShowModal(false)}>
-              Cancel
-            </Button>,
-            <Button
-              key="submit"
-              type="primary"
-              onClick={handleSubmit}
-              disabled={!title || !startTime || !endTime}
-            >
-              Add Appointment
-            </Button>
-          ]}
-        >
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            <div>
-              <Text strong>Patient Name & Description</Text>
-              <Input
-                placeholder="e.g. John Doe - General Checkup"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                style={{ marginTop: 8 }}
-              />
-            </div>
-            <Row gutter={16}>
-              <Col span={12}>
-                <Text strong>Start Time</Text>
-                <TimePicker
-                  value={startTime}
-                  onChange={setStartTime}
-                  format="HH:mm"
-                  style={{ width: '100%', marginTop: 8 }}
-                  placeholder="Select start time"
-                />
-              </Col>
-              <Col span={12}>
-                <Text strong>End Time</Text>
-                <TimePicker
-                  value={endTime}
-                  onChange={setEndTime}
-                  format="HH:mm"
-                  style={{ width: '100%', marginTop: 8 }}
-                  placeholder="Select end time"
-                />
-              </Col>
-            </Row>
-          </Space>
-        </Modal>
-
-        {/* Manage Schedule Modal */}
-        <Modal
-          title="Manage Weekly Schedule"
-          open={showManageModal}
-          onCancel={() => {
-            setShowManageModal(false);
-            resetManageForm();
-          }}
-          width={700}
-
-          footer={[
-            <Button key="cancel" onClick={() => setShowManageModal(false)}>
-              Cancel
-            </Button>,
-            <Button
-              key="submit"
-              type="primary"
-              onClick={handleGenerateSchedule}
-              disabled={!selectedWeekdays.length || !workingStartTime || !workingEndTime}
-            >
-              Generate Schedule
-            </Button>
-          ]}
-        >
-          <Space direction="vertical" style={{ width: '100%' }} size="large">
-            <div>
-              <Text strong>Select Working Days</Text>
-              <Select
-                mode="multiple"
-                placeholder="Choose weekdays"
-                value={selectedWeekdays}
-                onChange={setSelectedWeekdays}
-                style={{ width: '100%', marginTop: 8 }}
-              >
-                {weekdayOptions.map(option => (
-                  <Option key={option.value} value={option.value}>
-                    {option.label}
-                  </Option>
-                ))}
-              </Select>
-            </div>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Text strong>Working Start Time</Text>
-                <TimePicker
-                  value={workingStartTime}
-                  onChange={setWorkingStartTime}
-                  format="HH:mm"
-                  style={{ width: '100%', marginTop: 8 }}
-                  placeholder="e.g. 09:00"
-                />
-              </Col>
-              <Col span={12}>
-                <Text strong>Working End Time</Text>
-                <TimePicker
-                  value={workingEndTime}
-                  onChange={setWorkingEndTime}
-                  format="HH:mm"
-                  style={{ width: '100%', marginTop: 8 }}
-                  placeholder="e.g. 17:00"
-                />
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Text strong>Break Start Time (Optional)</Text>
-                <TimePicker
-                  value={breakStartTime}
-                  onChange={setBreakStartTime}
-                  format="HH:mm"
-                  style={{ width: '100%', marginTop: 8 }}
-                  placeholder="e.g. 12:00"
-                />
-              </Col>
-              <Col span={12}>
-                <Text strong>Break End Time (Optional)</Text>
-                <TimePicker
-                  value={breakEndTime}
-                  onChange={setBreakEndTime}
-                  format="HH:mm"
-                  style={{ width: '100%', marginTop: 8 }}
-                  placeholder="e.g. 13:00"
-                />
-              </Col>
-            </Row>
-
-            <div>
-              <Text strong>Schedule Validity (Years)</Text>
-              <InputNumber
-                min={1}
-                max={5}
-                value={validYears}
-                onChange={(value) => setValidYears(value || 1)}
-                style={{ width: '100%', marginTop: 8 }}
-              />
-            </div>
-
-            <Alert
-              message="Color Legend"
-              description={
-                <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
-                  <li><Badge color="#52c41a" /> Green: Available working hours</li>
-                  <li><Badge color="#ff4d4f" /> Red: Break time or unavailable</li>
-                  <li>Month view: Working days highlighted in background</li>
-                  <li>Week/Day view: Availability blocks show doctor's schedule</li>
-                </ul>
-              }
-              type="info"
-              showIcon
-            />
-          </Space>
-        </Modal>
-
-        {/* Review Appointment Modal */}
-        <Modal
-          title="Review Appointment"
-          open={showReviewModal}
-          onCancel={() => setShowReviewModal(false)}
-          bodyStyle={{ maxHeight: '60vh', overflowY: 'auto' }}
-          footer={[
-            <Button key="cancel" onClick={() => setShowReviewModal(false)}>
-              Close
-            </Button>,
-            <Button
-              key="submit"
-              type="primary"
-              onClick={() => {
-                if (selectedEventObj) {
-                  const eventStart = selectedEventObj.startStr;
-                  const eventEnd = selectedEventObj.endStr;
-                  const eventDate = eventStart.split('T')[0];
-
-                  selectedEventObj.setExtendedProp('status', approvalStatus);
-
-                  if (approvalStatus === 'approved') {
-                      selectedEventObj.setProp('backgroundColor', '#52c41a'); // green background
-                      selectedEventObj.setProp('borderColor', '#52c41a');     // green border
-                      selectedEventObj.setProp('textColor', '#ffffff');
-
-                      // Assuming selectedEventObj is part of your 'events' state,
-                      // you might need to trigger a state update for FullCalendar to re-render with these props.
-                      // This often involves creating a new array to force a re-render.
-                      setEvents(prevEvents => prevEvents.map(event =>
-                          event.id === selectedEventObj.id ? selectedEventObj : event
-                      ));
-
-                      // Then, if you still need to recalculate availability for the day:
-                      updateAvailabilityForApprovedAppointment(eventDate, eventStart, eventEnd);
-                  } else if (approvalStatus === 'rejected') {
-                    // Remove the event entirely
-                      selectedEventObj.remove();
-                  } else {
-                    selectedEventObj.setProp('backgroundColor', '#faad14');
-                    selectedEventObj.setProp('borderColor', '#faad14');
-                  }
-                }
-
-                setShowReviewModal(false);
-                setSelectedEventObj(null);
-              }}
-            >
-              Update Status
-            </Button>
-          ]}
-        >
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            <div>
-              <Text strong>Patient & Description:</Text>
-              <div style={{ marginTop: 4 }}>{selectedEvent?.title}</div>
-            </div>
-            <div>
-              <Text strong>Start:</Text>
-              <div style={{ marginTop: 4 }}>
-                {selectedEvent?.start ? dayjs(selectedEvent.start).format('YYYY-MM-DD HH:mm') : ''}
-              </div>
-            </div>
-            <div>
-              <Text strong>End:</Text>
-              <div style={{ marginTop: 4 }}>
-                {selectedEvent?.end ? dayjs(selectedEvent.end).format('YYYY-MM-DD HH:mm') : ''}
-              </div>
-            </div>
-            <div>
-              <Text strong>Current Status:</Text>
-              <div style={{ marginTop: 4 }}>
-                <Badge
-                  status={
-                    selectedEvent?.status === 'approved' ? 'success' :
-                    selectedEvent?.status === 'rejected' ? 'error' : 'warning'
-                  }
-                  text={selectedEvent?.status || 'pending'}
-                />
-              </div>
-            </div>
-
-            <div>
-              <Text strong>Update Status:</Text> <br />
-              <Radio.Group
-                value={approvalStatus}
-                onChange={(e) => setApprovalStatus(e.target.value)}
-                style={{ marginTop: 8 }}
-              >
-                <Space direction="vertical">
-                  <Radio value="approved">
-                    <Text type="success">✓ Approve Appointment</Text>
-                  </Radio>
-                  <Radio value="rejected">
-                    <Text type="danger">✗ Reject Appointment</Text>
-                  </Radio>
-                </Space>
-              </Radio.Group>
-            </div>
-          </Space>
-        </Modal>
       </div>
+
+      <div className="schedule-main-content">
+        {currentView === 'month' && <CalendarView />}
+        {currentView === 'day' && <DayView />}
+        {currentView === 'list' && <AppointmentsList />}
+      </div>
+
+      {/* Schedule Settings Modal */}
+      {showScheduleModal && (
+        <>
+          <div className="schedule-modal-backdrop" onClick={() => setShowScheduleModal(false)}></div>
+          <div className="schedule-modal">
+            <div className="schedule-modal-header">
+              <h3>Schedule Settings</h3>
+              <button className="schedule-modal-close" onClick={() => setShowScheduleModal(false)}>×</button>
+            </div>
+            <div className="schedule-modal-content">
+              <div className="schedule-form-section">
+                <h4>Working Days</h4>
+                <div className="schedule-weekday-selector">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                    <label key={index} className="schedule-weekday-option">
+                      <input
+                        type="checkbox"
+                        checked={scheduleSettings.workingDays.includes(index)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setScheduleSettings(prev => ({
+                              ...prev,
+                              workingDays: [...prev.workingDays, index]
+                            }));
+                          } else {
+                            setScheduleSettings(prev => ({
+                              ...prev,
+                              workingDays: prev.workingDays.filter(d => d !== index)
+                            }));
+                          }
+                        }}
+                      />
+                      <span>{day}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="schedule-form-section">
+                <h4>Working Hours</h4>
+                <div className="schedule-time-inputs">
+                  <div className="schedule-input-group">
+                    <label>Start Time</label>
+                    <input
+                      type="time"
+                      value={scheduleSettings.workingHours.start}
+                      onChange={(e) => setScheduleSettings(prev => ({
+                        ...prev,
+                        workingHours: { ...prev.workingHours, start: e.target.value }
+                      }))}
+                      className="schedule-time-input"
+                    />
+                  </div>
+                  <div className="schedule-input-group">
+                    <label>End Time</label>
+                    <input
+                      type="time"
+                      value={scheduleSettings.workingHours.end}
+                      onChange={(e) => setScheduleSettings(prev => ({
+                        ...prev,
+                        workingHours: { ...prev.workingHours, end: e.target.value }
+                      }))}
+                      className="schedule-time-input"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="schedule-form-section">
+                <h4>Break Time</h4>
+                <div className="schedule-time-inputs">
+                  <div className="schedule-input-group">
+                    <label>Break Start</label>
+                    <input
+                      type="time"
+                      value={scheduleSettings.breakTime.start}
+                      onChange={(e) => setScheduleSettings(prev => ({
+                        ...prev,
+                        breakTime: { ...prev.breakTime, start: e.target.value }
+                      }))}
+                      className="schedule-time-input"
+                    />
+                  </div>
+                  <div className="schedule-input-group">
+                    <label>Break End</label>
+                    <input
+                      type="time"
+                      value={scheduleSettings.breakTime.end}
+                      onChange={(e) => setScheduleSettings(prev => ({
+                        ...prev,
+                        breakTime: { ...prev.breakTime, end: e.target.value }
+                      }))}
+                      className="schedule-time-input"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="schedule-form-section">
+                <h4>Appointment Duration</h4>
+                <select
+                  value={scheduleSettings.slotDuration}
+                  onChange={(e) => setScheduleSettings(prev => ({
+                    ...prev,
+                    slotDuration: parseInt(e.target.value)
+                  }))}
+                  className="schedule-select"
+                >
+                  <option value={15}>15 minutes</option>
+                  <option value={30}>30 minutes</option>
+                  <option value={60}>60 minutes</option>
+                </select>
+              </div>
+            </div>
+            <div className="schedule-modal-actions">
+              <button className="schedule-btn secondary" onClick={() => setShowScheduleModal(false)}>
+                Cancel
+              </button>
+              <button className="schedule-btn primary" onClick={() => setShowScheduleModal(false)}>
+                Save Settings
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Review Appointment Modal */}
+      {showReviewModal && selectedAppointment && (
+        <>
+          <div className="schedule-modal-backdrop" onClick={() => setShowReviewModal(false)}></div>
+          <div className="schedule-modal">
+            <div className="schedule-modal-header">
+              <h3>Review Appointment</h3>
+              <button className="schedule-modal-close" onClick={() => setShowReviewModal(false)}>×</button>
+            </div>
+            <div className="schedule-modal-content">
+              <div className="schedule-appointment-details-full">
+                <div className="schedule-detail-group">
+                  <label>Patient Name</label>
+                  <p>{selectedAppointment.patientName}</p>
+                </div>
+                <div className="schedule-detail-group">
+                  <label>Email</label>
+                  <p>{selectedAppointment.patientEmail}</p>
+                </div>
+                <div className="schedule-detail-group">
+                  <label>Phone</label>
+                  <p>{selectedAppointment.patientPhone}</p>
+                </div>
+                <div className="schedule-detail-group">
+                  <label>Appointment Type</label>
+                  <p>{selectedAppointment.type}</p>
+                </div>
+                <div className="schedule-detail-group">
+                  <label>Date & Time</label>
+                  <p>{new Date(selectedAppointment.date).toLocaleDateString()} at {selectedAppointment.time}</p>
+                </div>
+                <div className="schedule-detail-group">
+                  <label>Duration</label>
+                  <p>{selectedAppointment.duration} minutes</p>
+                </div>
+                <div className="schedule-detail-group">
+                  <label>Notes</label>
+                  <p>{selectedAppointment.notes}</p>
+                </div>
+                <div className="schedule-detail-group">
+                  <label>Current Status</label>
+                  <span className={`schedule-status-badge ${selectedAppointment.status}`}>
+                    {selectedAppointment.status === 'approved' && <CheckCircle size={14} />}
+                    {selectedAppointment.status === 'pending' && <AlertCircle size={14} />}
+                    {selectedAppointment.status === 'rejected' && <XCircle size={14} />}
+                    {selectedAppointment.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="schedule-modal-actions">
+              <button className="schedule-btn secondary" onClick={() => setShowReviewModal(false)}>
+                Close
+              </button>
+              {selectedAppointment.status === 'pending' && (
+                <>
+                  <button
+                    className="schedule-btn danger"
+                    onClick={() => {
+                      setAppointments(prev => prev.map(apt =>
+                        apt.id === selectedAppointment.id ? { ...apt, status: 'rejected' } : apt
+                      ));
+                      setShowReviewModal(false);
+                    }}
+                  >
+                    <XCircle size={16} />
+                    Reject
+                  </button>
+                  <button
+                    className="schedule-btn primary"
+                    onClick={() => {
+                      setAppointments(prev => prev.map(apt =>
+                        apt.id === selectedAppointment.id ? { ...apt, status: 'approved' } : apt
+                      ));
+                      setShowReviewModal(false);
+                    }}
+                  >
+                    <CheckCircle size={16} />
+                    Approve
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      <style jsx>{`
+        .schedule-container {
+          background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+          min-height: 100vh;
+          padding: 24px 32px;
+        }
+
+        .schedule-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 32px;
+        }
+
+        .schedule-title-section h2 {
+          margin: 0 0 8px 0;
+          font-size: 28px;
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .schedule-title-section p {
+          margin: 0;
+          color: #64748b;
+          font-size: 16px;
+        }
+
+        .schedule-actions {
+          display: flex;
+          gap: 12px;
+        }
+
+        .schedule-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 20px;
+          border-radius: 12px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: none;
+          font-size: 14px;
+        }
+
+        .schedule-btn.primary {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+        }
+
+        .schedule-btn.primary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .schedule-btn.secondary {
+          background: rgba(255, 255, 255, 0.9);
+          color: #64748b;
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          backdrop-filter: blur(10px);
+        }
+
+        .schedule-btn.secondary:hover {
+          background: rgba(255, 255, 255, 1);
+          border-color: #667eea;
+          color: #667eea;
+        }
+
+        .schedule-btn.danger {
+          background: #ef4444;
+          color: white;
+        }
+
+        .schedule-btn.danger:hover {
+          background: #dc2626;
+          transform: translateY(-2px);
+        }
+
+        .schedule-stats {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 24px;
+          margin-bottom: 32px;
+        }
+
+        .schedule-stat-card {
+          background: rgba(255, 255, 255, 0.9);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          border-radius: 16px;
+          padding: 24px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          transition: transform 0.2s ease;
+        }
+
+        .schedule-stat-card:hover {
+          transform: translateY(-2px);
+        }
+
+        .schedule-stat-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+        }
+
+        .schedule-stat-card.pending .schedule-stat-icon {
+          background: linear-gradient(135deg, #faad14 0%, #f59e0b 100%);
+        }
+
+        .schedule-stat-card.approved .schedule-stat-icon {
+          background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+        }
+
+        .schedule-stat-card.total .schedule-stat-icon {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .schedule-stat-content h3 {
+          margin: 0 0 4px 0;
+          font-size: 28px;
+          font-weight: 700;
+          color: #1e293b;
+        }
+
+        .schedule-stat-content p {
+          margin: 0;
+          color: #64748b;
+          font-size: 14px;
+        }
+
+        .schedule-view-controls {
+          margin-bottom: 24px;
+        }
+
+        .schedule-view-tabs {
+          display: flex;
+          gap: 4px;
+          background: rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          border-radius: 12px;
+          padding: 4px;
+          width: fit-content;
+        }
+
+        .schedule-tab {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 20px;
+          border-radius: 8px;
+          border: none;
+          background: transparent;
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-weight: 500;
+        }
+
+        .schedule-tab.active {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          box-shadow: 0 2px 4px rgba(102, 126, 234, 0.4);
+        }
+
+        .schedule-main-content {
+          background: rgba(255, 255, 255, 0.9);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          border-radius: 16px;
+          padding: 24px;
+        }
+
+        /* Calendar Styles */
+        .schedule-calendar-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+        }
+
+        .schedule-calendar-header h3 {
+          margin: 0;
+          font-size: 20px;
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .schedule-nav-btn {
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          background: rgba(255, 255, 255, 0.8);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+          color: #64748b;
+          transition: all 0.2s ease;
+        }
+
+        .schedule-nav-btn:hover {
+          background: #667eea;
+          color: white;
+          border-color: #667eea;
+        }
+
+        .schedule-weekdays {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          gap: 1px;
+          margin-bottom: 8px;
+        }
+
+        .schedule-weekday {
+          padding: 12px;
+          text-align: center;
+          font-weight: 600;
+          color: #64748b;
+          font-size: 14px;
+        }
+
+        .schedule-days {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          gap: 1px;
+          background: rgba(226, 232, 240, 0.3);
+          border-radius: 8px;
+          overflow: hidden;
+        }
+
+        .schedule-day {
+          min-height: 100px;
+          background: rgba(255, 255, 255, 0.8);
+          padding: 8px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          position: relative;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .schedule-day:hover {
+          background: rgba(102, 126, 234, 0.1);
+        }
+
+        .schedule-day.today {
+          background: rgba(102, 126, 234, 0.2);
+          font-weight: 600;
+        }
+
+        .schedule-day.working-day {
+          border-left: 3px solid #16a34a;
+        }
+
+        .schedule-day.non-working-day {
+          background: rgba(248, 250, 252, 0.5);
+          color: #94a3b8;
+        }
+
+        .schedule-day.empty {
+          background: transparent;
+          cursor: default;
+        }
+
+        .schedule-day-number {
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .schedule-day-appointments {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+          margin-top: 8px;
+        }
+
+        .schedule-appointment-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+        }
+
+        .schedule-appointment-dot.approved {
+          background: #16a34a;
+        }
+
+        .schedule-appointment-dot.pending {
+          background: #faad14;
+        }
+
+        .schedule-appointment-dot.rejected {
+          background: #ef4444;
+        }
+
+        .schedule-more-appointments {
+          font-size: 10px;
+          color: #64748b;
+          font-weight: 500;
+        }
+
+        /* Day View Styles */
+        .schedule-day-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+          padding-bottom: 16px;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+        }
+
+        .schedule-day-header h3 {
+          margin: 0;
+          font-size: 20px;
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .schedule-day-stats {
+          display: flex;
+          gap: 16px;
+        }
+
+        .schedule-stat {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 14px;
+          color: #64748b;
+        }
+
+        .schedule-time-slots {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .schedule-time-slot {
+          display: flex;
+          align-items: center;
+          padding: 16px;
+          border-radius: 12px;
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          transition: all 0.2s ease;
+        }
+
+        .schedule-time-slot.available {
+          background: rgba(22, 163, 74, 0.05);
+          border-color: rgba(22, 163, 74, 0.2);
+        }
+
+        .schedule-time-slot.booked {
+          background: rgba(239, 68, 68, 0.05);
+          border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .schedule-slot-time {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 120px;
+          font-weight: 500;
+          color: #374151;
+        }
+
+        .schedule-slot-content {
+          flex: 1;
+          margin-left: 16px;
+        }
+
+        .schedule-appointment-info {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .schedule-appointment-patient {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-weight: 500;
+          color: #1e293b;
+        }
+
+        .schedule-appointment-type {
+          color: #64748b;
+          font-size: 14px;
+          margin-top: 4px;
+        }
+
+        .schedule-available-slot {
+          color: #16a34a;
+          font-style: italic;
+        }
+
+        .schedule-no-slots {
+          text-align: center;
+          padding: 60px 20px;
+          color: #64748b;
+        }
+
+        .schedule-no-slots svg {
+          color: #94a3b8;
+          margin-bottom: 16px;
+        }
+
+        /* Appointments List Styles */
+        .schedule-list-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+        }
+
+        .schedule-list-header h3 {
+          margin: 0;
+          font-size: 20px;
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .schedule-list-controls {
+          display: flex;
+          gap: 16px;
+          align-items: center;
+        }
+
+        .schedule-search-container {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .schedule-search-input {
+          width: 250px;
+          padding: 10px 16px 10px 40px;
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(10px);
+          font-size: 14px;
+          transition: all 0.2s ease;
+        }
+
+        .schedule-search-input:focus {
+          outline: none;
+          border-color: #667eea;
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .schedule-search-container svg {
+          position: absolute;
+          left: 12px;
+          color: #94a3b8;
+        }
+
+        .schedule-filter-select {
+          padding: 10px 16px;
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(10px);
+          font-size: 14px;
+          min-width: 120px;
+          cursor: pointer;
+        }
+
+        .schedule-appointment-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px;
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          border-radius: 12px;
+          margin-bottom: 12px;
+          background: rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(10px);
+          transition: all 0.2s ease;
+        }
+
+        .schedule-appointment-row:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .schedule-appointment-main h4 {
+          margin: 0 0 4px 0;
+          font-size: 16px;
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .schedule-appointment-main p {
+          margin: 0;
+          color: #64748b;
+          font-size: 14px;
+        }
+
+        .schedule-appointment-details {
+          display: flex;
+          gap: 16px;
+          margin-top: 8px;
+          flex-wrap: wrap;
+        }
+
+        .schedule-appointment-details span {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 12px;
+          color: #64748b;
+        }
+
+        .schedule-appointment-status {
+          padding: 4px 8px;
+          border-radius: 6px;
+          font-weight: 500;
+          text-transform: capitalize;
+        }
+
+        .schedule-appointment-status.approved {
+          background: rgba(22, 163, 74, 0.1);
+          color: #16a34a;
+        }
+
+        .schedule-appointment-status.pending {
+          background: rgba(245, 158, 11, 0.1);
+          color: #f59e0b;
+        }
+
+        .schedule-appointment-status.rejected {
+          background: rgba(239, 68, 68, 0.1);
+          color: #ef4444;
+        }
+
+        .schedule-appointment-actions {
+          display: flex;
+          gap: 8px;
+        }
+
+        .schedule-action-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 12px;
+          border-radius: 8px;
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          background: rgba(255, 255, 255, 0.8);
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-size: 12px;
+        }
+
+        .schedule-action-btn:hover {
+          background: #667eea;
+          color: white;
+          border-color: #667eea;
+        }
+
+        .schedule-action-btn.view:hover {
+          background: #3b82f6;
+          border-color: #3b82f6;
+        }
+
+        .schedule-no-appointments {
+          text-align: center;
+          padding: 60px 20px;
+          color: #64748b;
+        }
+
+        .schedule-no-appointments svg {
+          color: #94a3b8;
+          margin-bottom: 16px;
+        }
+
+        /* Modal Styles */
+        .schedule-modal-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 9999;
+          backdrop-filter: blur(4px);
+        }
+
+        .schedule-modal {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          border-radius: 16px;
+          max-width: 600px;
+          width: 90%;
+          max-height: 80vh;
+          overflow-y: auto;
+          z-index: 10000;
+          box-shadow: 0 20px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .schedule-modal-header {
+          padding: 24px 32px 0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+          margin-bottom: 24px;
+          padding-bottom: 16px;
+        }
+
+        .schedule-modal-header h3 {
+          margin: 0;
+          font-size: 20px;
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .schedule-modal-close {
+          background: none;
+          border: none;
+          font-size: 24px;
+          color: #64748b;
+          cursor: pointer;
+          padding: 4px;
+          line-height: 1;
+        }
+
+        .schedule-modal-content {
+          padding: 0 32px 32px;
+        }
+
+        .schedule-modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          padding: 24px 32px;
+          border-top: 1px solid rgba(226, 232, 240, 0.6);
+        }
+
+        .schedule-form-section {
+          margin-bottom: 24px;
+        }
+
+        .schedule-form-section h4 {
+          margin: 0 0 16px 0;
+          font-size: 16px;
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .schedule-weekday-selector {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .schedule-weekday-option {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .schedule-weekday-option:has(input:checked) {
+          background: rgba(102, 126, 234, 0.1);
+          border-color: #667eea;
+          color: #667eea;
+        }
+
+        .schedule-time-inputs {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+
+        .schedule-input-group label {
+          display: block;
+          margin-bottom: 8px;
+          font-weight: 500;
+          color: #374151;
+          font-size: 14px;
+        }
+
+        .schedule-time-input, .schedule-select {
+          width: 100%;
+          padding: 12px 16px;
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(10px);
+          font-size: 14px;
+          transition: all 0.2s ease;
+        }
+
+        .schedule-time-input:focus, .schedule-select:focus {
+          outline: none;
+          border-color: #667eea;
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .schedule-appointment-details-full {
+          display: grid;
+          gap: 16px;
+        }
+
+        .schedule-detail-group label {
+          display: block;
+          font-weight: 600;
+          color: #374151;
+          margin-bottom: 4px;
+          font-size: 14px;
+        }
+
+        .schedule-detail-group p {
+          margin: 0;
+          color: #1e293b;
+          background: rgba(248, 250, 252, 0.5);
+          padding: 8px 12px;
+          border-radius: 8px;
+        }
+
+        .schedule-status-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border-radius: 8px;
+          font-weight: 500;
+          text-transform: capitalize;
+          font-size: 14px;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+          .schedule-container {
+            padding: 16px;
+          }
+
+          .schedule-header {
+            flex-direction: column;
+            gap: 16px;
+          }
+
+          .schedule-actions {
+            width: 100%;
+            justify-content: stretch;
+          }
+
+          .schedule-actions .schedule-btn {
+            flex: 1;
+            justify-content: center;
+          }
+
+          .schedule-stats {
+            grid-template-columns: 1fr;
+          }
+
+          .schedule-view-tabs {
+            width: 100%;
+          }
+
+          .schedule-tab {
+            flex: 1;
+            justify-content: center;
+          }
+
+          .schedule-days {
+            gap: 2px;
+          }
+
+          .schedule-day {
+            min-height: 80px;
+            font-size: 14px;
+          }
+
+          .schedule-appointment-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+          }
+
+          .schedule-appointment-details {
+            flex-direction: column;
+            gap: 8px;
+          }
+
+          .schedule-list-controls {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .schedule-search-input {
+            width: 100%;
+          }
+
+          .schedule-time-inputs {
+            grid-template-columns: 1fr;
+          }
+
+          .schedule-modal {
+            width: 95%;
+            margin: 20px;
+          }
+
+          .schedule-modal-header,
+          .schedule-modal-content,
+          .schedule-modal-actions {
+            padding-left: 20px;
+            padding-right: 20px;
+          }
+        }
+      `}</style>
     </div>
   );
 };
 
-export default Schedule;
+export default EnhancedSchedule;
