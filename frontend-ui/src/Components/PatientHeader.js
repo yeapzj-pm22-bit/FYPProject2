@@ -12,8 +12,10 @@ import {
   Menu,
   X
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const PatientHeader = () => {
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -32,9 +34,27 @@ const PatientHeader = () => {
   }, []);
 
   const handleProfileAction = (action) => {
-    console.log('Profile action:', action);
-    setProfileDropdownOpen(false);
-    // Handle different actions here
+    switch (action) {
+      case 'View Profile':
+        navigate('/Profile');
+        break;
+      case 'My Appointments':
+        navigate('/AppointmentAndMedicalRecord');
+        break;
+      case 'Billing':
+        navigate('/Billing');
+        break;
+      case 'Settings':
+        navigate('/settings');
+        break;
+      case 'Logout':
+        // Clear tokens, session, etc., then redirect
+        localStorage.removeItem('token'); // or your logout logic
+        navigate('/login');
+        break;
+      default:
+        break;
+    }
   };
 
   return (
@@ -425,10 +445,10 @@ const PatientHeader = () => {
                 </button>
                 <button
                   className="dropdown-item"
-                  onClick={() => handleProfileAction('Medical Records')}
+                  onClick={() => handleProfileAction('Billing')}
                 >
                   <FileText size={16} />
-                  Medical Records
+                  Billing
                 </button>
                 <div className="dropdown-divider"></div>
                 <button

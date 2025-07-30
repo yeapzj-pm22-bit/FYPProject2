@@ -455,22 +455,7 @@ const LoginPage = () => {
           </p>
         </div>
 
-        <div className="features-strip">
-          <div className="features-container">
-            <div className="feature-item">
-              <Shield size={16} />
-              <span>Bank-level Security</span>
-            </div>
-            <div className="feature-item">
-              <Heart size={16} />
-              <span>Trusted by 50,000+ Patients</span>
-            </div>
-            <div className="feature-item">
-              <Lock size={16} />
-              <span>HIPAA Compliant</span>
-            </div>
-          </div>
-        </div>
+
       </div>
     </>
   );

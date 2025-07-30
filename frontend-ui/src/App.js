@@ -22,14 +22,16 @@ import RefillRequestList from './Pages/AdminPortal/RefillRequestList';
 import AppointmentList from './Pages/AdminPortal/AppointmentList';
 import Testing from './Pages/AdminPortal/Testing';
 import Testing2 from './Pages/AdminPortal/Testing2';
+import Testing4 from './Pages/AdminPortal/Testing4';
 
-
+import AdminDashBoard from './Pages/AdminPortal/AdminDashBoard';
 
 import AppointmentAndMedicalRecord from './Pages/HomePage/AppointmentAndMedicalRecord';
 import BookAppointment from './Pages/HomePage/BookAppointment';
 import Login2 from './Pages/HomePage/Login';
 import Register2 from './Pages/HomePage/Register';
 import Profile from './Pages/HomePage/Profile';
+import Billing from './Pages/HomePage/Billing';
 
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -46,13 +48,17 @@ function App() {
     <Router>
       <Suspense fallback={<div>Loading...</div>}>
         <Routes>
-          {/* Root path renders Admin */}
+          {/* Root path for Patient Side and Pages */}
           <Route path="/" element={< PatientHomePage/>} />
           <Route path="/AppointmentAndMedicalRecord" element={<AppointmentAndMedicalRecord />} />
           <Route path="/BookAppointment" element={<BookAppointment />} />
           <Route path="/Login" element={<Login2 />} />
           <Route path="/Register" element={<Register2 />} />
           <Route path="/Profile" element={<Profile />} />
+          <Route path="/Billing" element={<Billing />} />
+          {/* Root path for Patient Side and Pages */}
+
+          <Route path="/AdminDashBoard" element={<AdminDashBoard />} />
           {/* Other routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -77,6 +83,7 @@ function App() {
              <Route path="appointment-list" element={<AppointmentList />} />
              <Route path="testing" element={<Testing />} />
              <Route path="Testing2" element={<Testing2 />} />
+             <Route path="Testing4" element={<Testing4 />} />
            <Route path="schedule" element={<Schedule />} />
           </Route>
 
