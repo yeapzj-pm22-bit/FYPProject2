@@ -22,21 +22,40 @@ import {
   CreditCard,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import PatientHeader from '../../Components/PatientHeader';
 import PatientFooter from '../../Components/PatientFooter';
+
 const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
   const [profileImage, setProfileImage] = useState(null);
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Password reset states
+  const [resetPasswordData, setResetPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({
+    score: 0,
+    feedback: '',
+    color: '#ef4444'
+  });
 
   // IC Verification states
   const [icFrontImage, setIcFrontImage] = useState(null);
   const [icBackImage, setIcBackImage] = useState(null);
-  const [icVerificationStatus, setIcVerificationStatus] = useState('not-verified'); // 'not-verified', 'pending', 'verified', 'rejected'
+  const [icVerificationStatus, setIcVerificationStatus] = useState('not-verified');
   const [showIcUpload, setShowIcUpload] = useState(false);
   const icFrontInputRef = useRef(null);
   const icBackInputRef = useRef(null);
@@ -61,6 +80,52 @@ const ProfilePage = () => {
 
   const [editData, setEditData] = useState({ ...profileData });
 
+  // Password strength evaluation
+  const evaluatePasswordStrength = (password) => {
+    let score = 0;
+    let feedback = '';
+    let color = '#ef4444';
+
+    if (password.length === 0) {
+      return { score: 0, feedback: '', color: '#ef4444' };
+    }
+
+    if (password.length >= 8) score += 1;
+    if (/[a-z]/.test(password)) score += 1;
+    if (/[A-Z]/.test(password)) score += 1;
+    if (/[0-9]/.test(password)) score += 1;
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+    switch (score) {
+      case 0:
+      case 1:
+        feedback = 'Very Weak';
+        color = '#ef4444';
+        break;
+      case 2:
+        feedback = 'Weak';
+        color = '#f97316';
+        break;
+      case 3:
+        feedback = 'Fair';
+        color = '#eab308';
+        break;
+      case 4:
+        feedback = 'Good';
+        color = '#22c55e';
+        break;
+      case 5:
+        feedback = 'Strong';
+        color = '#16a34a';
+        break;
+      default:
+        feedback = 'Very Weak';
+        color = '#ef4444';
+    }
+
+    return { score, feedback, color };
+  };
+
   const handleEdit = () => {
     setIsEditing(true);
     setEditData({ ...profileData });
@@ -80,6 +145,54 @@ const ProfilePage = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setEditData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePasswordInputChange = (e) => {
+    const { name, value } = e.target;
+    setResetPasswordData(prev => ({ ...prev, [name]: value }));
+
+    // Evaluate password strength for new password
+    if (name === 'newPassword') {
+      const strength = evaluatePasswordStrength(value);
+      setPasswordStrength(strength);
+    }
+  };
+
+  const handleResetPassword = () => {
+    const { currentPassword, newPassword, confirmPassword } = resetPasswordData;
+
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      alert('Please fill in all password fields.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      alert('New passwords do not match.');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      alert('New password must be at least 8 characters long.');
+      return;
+    }
+
+    if (passwordStrength.score < 3) {
+      alert('Please choose a stronger password.');
+      return;
+    }
+
+    // Simulate API call
+    setTimeout(() => {
+      alert('Password reset successfully!');
+      setShowResetPassword(false);
+      setResetPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+      setPasswordStrength({ score: 0, feedback: '', color: '#ef4444' });
+    }, 1000);
   };
 
   const handleImageUpload = (e) => {
@@ -115,7 +228,6 @@ const ProfilePage = () => {
       setShowIcUpload(false);
       alert('IC verification submitted successfully! Please wait for admin approval.');
 
-      // Simulate verification process
       setTimeout(() => {
         setIcVerificationStatus('verified');
       }, 3000);
@@ -164,11 +276,9 @@ const ProfilePage = () => {
   const statusInfo = getVerificationStatusInfo();
 
   return (
-<>
-          {/* Header */}
-          <div>
-          <PatientHeader />
-</div>
+   <div>
+            {/* Header */}
+            <PatientHeader />
     <div className="profile-page-container">
       <style>{`
         .profile-page-container {
@@ -609,6 +719,96 @@ const ProfilePage = () => {
           background: #f0f9ff;
         }
 
+        .password-input-wrapper {
+          position: relative;
+        }
+
+        .password-toggle {
+          position: absolute;
+          right: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          color: #6b7280;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 4px;
+          transition: color 0.2s;
+        }
+
+        .password-toggle:hover {
+          color: #374151;
+        }
+
+        .password-strength {
+          margin-top: 8px;
+        }
+
+        .strength-bar {
+          width: 100%;
+          height: 4px;
+          background-color: #e5e7eb;
+          border-radius: 2px;
+          overflow: hidden;
+          margin-bottom: 4px;
+        }
+
+        .strength-fill {
+          height: 100%;
+          transition: all 0.3s ease;
+          border-radius: 2px;
+        }
+
+        .strength-text {
+          font-size: 12px;
+          font-weight: 500;
+          transition: color 0.3s ease;
+        }
+
+        .error-text {
+          color: #ef4444;
+          font-size: 12px;
+          margin-top: 4px;
+          font-weight: 500;
+        }
+
+        .password-requirements {
+          background-color: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 16px;
+          margin-top: 16px;
+        }
+
+        .password-requirements h4 {
+          color: #374151;
+          font-size: 14px;
+          font-weight: 600;
+          margin-bottom: 8px;
+        }
+
+        .password-requirements ul {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+        }
+
+        .password-requirements li {
+          color: #6b7280;
+          font-size: 13px;
+          padding: 2px 0;
+          position: relative;
+          padding-left: 16px;
+        }
+
+        .password-requirements li:before {
+          content: "•";
+          color: #2563eb;
+          position: absolute;
+          left: 0;
+        }
+
         .hidden {
           display: none;
         }
@@ -732,7 +932,6 @@ const ProfilePage = () => {
               <CreditCard size={18} />
               IC Verification
             </button>
-
             <button
               className={`tab-item ${activeTab === 'settings' ? 'active' : ''}`}
               onClick={() => setActiveTab('settings')}
@@ -746,7 +945,6 @@ const ProfilePage = () => {
             {activeTab === 'personal' && (
               <div>
                 <h2 className="section-title">Personal Information</h2>
-
                 <div className="form-grid">
                   <div className="form-group">
                     <label className="form-label">First Name</label>
@@ -759,7 +957,6 @@ const ProfilePage = () => {
                       disabled={!isEditing}
                     />
                   </div>
-
                   <div className="form-group">
                     <label className="form-label">Last Name</label>
                     <input
@@ -771,7 +968,6 @@ const ProfilePage = () => {
                       disabled={!isEditing}
                     />
                   </div>
-
                   <div className="form-group">
                     <label className="form-label">Email Address</label>
                     <input
@@ -783,11 +979,10 @@ const ProfilePage = () => {
                       disabled={!isEditing}
                     />
                   </div>
-
                   <div className="form-group">
                     <label className="form-label">Gender</label>
                     <input
-                      type="tel"
+                      type="text"
                       name="phone"
                       className="form-input"
                       value={isEditing ? editData.phone : profileData.phone}
@@ -795,7 +990,6 @@ const ProfilePage = () => {
                       disabled={!isEditing}
                     />
                   </div>
-
                   <div className="form-group">
                     <label className="form-label">Date of Birth</label>
                     <input
@@ -807,8 +1001,6 @@ const ProfilePage = () => {
                       disabled={!isEditing}
                     />
                   </div>
-
-
                 </div>
               </div>
             )}
@@ -816,7 +1008,6 @@ const ProfilePage = () => {
             {activeTab === 'verification' && (
               <div>
                 <h2 className="section-title">IC Verification</h2>
-
                 <div className="info-card">
                   <div className="info-card-title">
                     <Shield size={18} />
@@ -909,79 +1100,6 @@ const ProfilePage = () => {
               </div>
             )}
 
-            {activeTab === 'medical' && (
-              <div>
-                <h2 className="section-title">Medical Information</h2>
-
-                <div className="info-card">
-                  <div className="info-card-title">
-                    <AlertCircle size={18} color="#f59e0b" />
-                    Important Medical Details
-                  </div>
-                  <ul className="info-list">
-                    <li className="info-item">
-                      <span className="info-label">Blood Type</span>
-                      <span className="info-value">{profileData.bloodType}</span>
-                    </li>
-                    <li className="info-item">
-                      <span className="info-label">Known Allergies</span>
-                      <span className="info-value">{profileData.allergies}</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Blood Type</label>
-                    <input
-                      type="text"
-                      name="bloodType"
-                      className="form-input"
-                      value={isEditing ? editData.bloodType : profileData.bloodType}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Current Conditions</label>
-                    <textarea
-                      name="conditions"
-                      className="form-input form-textarea"
-                      value={isEditing ? editData.conditions : profileData.conditions}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      placeholder="List any current medical conditions..."
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Known Allergies</label>
-                    <textarea
-                      name="allergies"
-                      className="form-input form-textarea"
-                      value={isEditing ? editData.allergies : profileData.allergies}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      placeholder="List any known allergies..."
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Current Medications</label>
-                    <textarea
-                      name="medications"
-                      className="form-input form-textarea"
-                      value={isEditing ? editData.medications : profileData.medications}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      placeholder="List current medications and dosages..."
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
             {activeTab === 'settings' && (
               <div>
                 <h2 className="section-title">Account Settings</h2>
@@ -1013,7 +1131,11 @@ const ProfilePage = () => {
                     Privacy & Security
                   </div>
                   <div style={{display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px'}}>
-                    <button className="btn btn-secondary" style={{justifyContent: 'flex-start'}}>
+                    <button
+                      className="btn btn-secondary"
+                      style={{justifyContent: 'flex-start'}}
+                      onClick={() => setShowResetPassword(true)}
+                    >
                       <Lock size={18} />
                       Change Password
                     </button>
@@ -1067,7 +1189,6 @@ const ProfilePage = () => {
           <div className="upload-modal">
             <div className="upload-content">
               <h3 style={{marginBottom: '16px', color: '#1f2937', textAlign: 'center'}}>Update Profile Picture</h3>
-
               <div
                 className="upload-area"
                 onClick={triggerFileInput}
@@ -1103,7 +1224,6 @@ const ProfilePage = () => {
                   PNG, JPG up to 5MB
                 </p>
               </div>
-
               <input
                 ref={fileInputRef}
                 type="file"
@@ -1111,7 +1231,6 @@ const ProfilePage = () => {
                 onChange={handleImageUpload}
                 className="hidden"
               />
-
               <div style={{display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '24px'}}>
                 <button
                   className="btn btn-secondary"
@@ -1125,6 +1244,137 @@ const ProfilePage = () => {
                 >
                   <Upload size={18} />
                   Choose File
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reset Password Modal */}
+        {showResetPassword && (
+          <div className="upload-modal">
+            <div className="upload-content">
+              <h3 style={{marginBottom: '16px', color: '#1f2937', textAlign: 'center'}}>Reset Password</h3>
+              <p style={{color: '#6b7280', textAlign: 'center', marginBottom: '24px'}}>
+                Enter your current password and choose a new one
+              </p>
+
+              <div className="form-group">
+                <label className="form-label">Current Password</label>
+                <div className="password-input-wrapper">
+                  <input
+                    type={showCurrentPassword ? "text" : "password"}
+                    name="currentPassword"
+                    className="form-input"
+                    placeholder="Enter current password"
+                    value={resetPasswordData.currentPassword}
+                    onChange={handlePasswordInputChange}
+                    style={{paddingRight: '45px'}}
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  >
+                    {showCurrentPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">New Password</label>
+                <div className="password-input-wrapper">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    name="newPassword"
+                    className="form-input"
+                    placeholder="Enter new password"
+                    value={resetPasswordData.newPassword}
+                    onChange={handlePasswordInputChange}
+                    style={{paddingRight: '45px'}}
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                  >
+                    {showNewPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </button>
+                </div>
+                {resetPasswordData.newPassword && (
+                  <div className="password-strength">
+                    <div className="strength-bar">
+                      <div
+                        className="strength-fill"
+                        style={{
+                          width: `${(passwordStrength.score / 5) * 100}%`,
+                          backgroundColor: passwordStrength.color
+                        }}
+                      ></div>
+                    </div>
+                    <div className="strength-text" style={{ color: passwordStrength.color }}>
+                      {passwordStrength.feedback}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Confirm New Password</label>
+                <div className="password-input-wrapper">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    className="form-input"
+                    placeholder="Confirm new password"
+                    value={resetPasswordData.confirmPassword}
+                    onChange={handlePasswordInputChange}
+                    style={{paddingRight: '45px'}}
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                  </button>
+                </div>
+                {resetPasswordData.confirmPassword && resetPasswordData.newPassword !== resetPasswordData.confirmPassword && (
+                  <div className="error-text">Passwords do not match</div>
+                )}
+              </div>
+
+              <div className="password-requirements">
+                <h4>Password Requirements:</h4>
+                <ul>
+                  <li>At least 8 characters long</li>
+                  <li>Contains uppercase and lowercase letters</li>
+                  <li>Contains at least one number</li>
+                  <li>Contains at least one special character</li>
+                </ul>
+              </div>
+
+              <div style={{display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '24px'}}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowResetPassword(false);
+                    setResetPasswordData({
+                      currentPassword: '',
+                      newPassword: '',
+                      confirmPassword: ''
+                    });
+                    setPasswordStrength({ score: 0, feedback: '', color: '#ef4444' });
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleResetPassword}
+                >
+                  <Lock size={18} />
+                  Reset Password
                 </button>
               </div>
             </div>
@@ -1213,7 +1463,8 @@ const ProfilePage = () => {
         )}
       </div>
     </div>
-    </>
+     <PatientFooter />
+                    </div>
   );
 };
 

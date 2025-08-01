@@ -32,7 +32,9 @@ import Login2 from './Pages/HomePage/Login';
 import Register2 from './Pages/HomePage/Register';
 import Profile from './Pages/HomePage/Profile';
 import Billing from './Pages/HomePage/Billing';
-import Payment from './Pages/HomePage/Payment.js';
+import Payment from './Pages/HomePage/Payment';
+import LoginRegister from './Pages/HomePage/Login_Register_forget';
+
 
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -48,6 +50,7 @@ import MedicalRecordList from './Pages/Admin/MedicalRecordList';
 import MedicineList from './Pages/Admin/MedicineList';
 import DispenseList from './Pages/Admin/DispenseList';
 import InventoryList from './Pages/Admin/InventoryList';
+import PaymentList from './Pages/Admin/PaymentList';
 import Report from './Pages/Admin/Report';
 
 const Admin = lazy(() => import('./Pages/AdminPortal/Admin'));
@@ -68,6 +71,7 @@ function App() {
               {/* Public Patient-Side Pages */}
               <Route path="/" element={<AdminLayout currentPage="appointments" onPageChange={(newPage) => console.log("Page changed to", newPage)} />}>
                 {/* These are nested routes inside AdminLayout */}
+                <Route index element={<Dashboard />} />
                 <Route path="create-user" element={<CreateUser />} />
                 <Route path="list-user" element={<UserList2 />} />
                 <Route path="ic-verify" element={<VerificationICList />} />
@@ -86,7 +90,7 @@ function App() {
                 <Route path="Testing2" element={<Testing2 />} />
                 <Route path="Testing4" element={<Testing4 />} />
                 <Route path="schedule" element={<Schedule2 />} />
-                <Route path="dashboard" element={<Dashboard />} />
+//                <Route path="dashboard" element={<Dashboard />} />
 
                 <Route path="userlist" element={<UserList />} />
                 <Route path="userverificationlist" element={<UserIcVerificationList />} />
@@ -94,9 +98,10 @@ function App() {
                 <Route path="medicineList" element={<MedicineList />} />
                 <Route path="dispenseList" element={<DispenseList />} />
                 <Route path="inventoryList" element={<InventoryList />} />
+                <Route path="paymentList" element={<PaymentList />} />
                  <Route path="report" element={<Report />} />
               </Route>
-
+              <Route path="/PatientHomePage" element={<PatientHomePage />} />
               {/* Non-AdminLayout routes
                <Route path="/" element={<PatientHomePage />} /> */}
               <Route path="/AppointmentAndMedicalRecord" element={<AppointmentAndMedicalRecord />} />
@@ -112,6 +117,7 @@ function App() {
               <Route path="/resetPassword" element={<ResetPassword />} />
               <Route path="/profilePage" element={<ProfilePage />} />
               <Route path="/payment" element={<Payment />} />
+              <Route path="/loginRegister" element={<LoginRegister />} />
 
 
             </Routes>

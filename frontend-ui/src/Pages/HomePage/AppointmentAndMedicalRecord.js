@@ -1,12 +1,43 @@
-import React, { useState } from 'react';
-import { Calendar, FileText, Pill, Camera, Clock, CheckCircle, XCircle, AlertCircle, Download, RefreshCw } from 'lucide-react';
-import './css/PatientHomePage.css';
-import PatientHeader from '../../Components/PatientHeader';
-import PatientFooter from '../../Components/PatientFooter';
+import React, { useState, useMemo } from 'react';
+import {
+  Calendar,
+  FileText,
+  Pill,
+  Camera,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Download,
+  RefreshCw,
+  Search,
+  Filter,
+  RotateCcw,
+  Edit3,
+  ChevronLeft,
+  ChevronRight,
+  Save
+} from 'lucide-react';
+
 const PatientDashboard = () => {
   const [activeTab, setActiveTab] = useState('appointments');
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [imageModal, setImageModal] = useState(null);
+
+  // Reschedule states
+  const [rescheduleModal, setRescheduleModal] = useState(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleStartTime, setRescheduleStartTime] = useState('');
+  const [rescheduleEndTime, setRescheduleEndTime] = useState('');
+  const [rescheduleMonth, setRescheduleMonth] = useState(new Date().getMonth());
+  const [rescheduleYear, setRescheduleYear] = useState(new Date().getFullYear());
+
+  // Search and Filter states
+  const [appointmentSearch, setAppointmentSearch] = useState('');
+  const [appointmentStatusFilter, setAppointmentStatusFilter] = useState('all');
+  const [appointmentDateFilter, setAppointmentDateFilter] = useState('all');
+  const [recordSearch, setRecordSearch] = useState('');
+  const [recordDateFilter, setRecordDateFilter] = useState('all');
 
   // Sample data
   const appointments = [
@@ -37,6 +68,25 @@ const PatientDashboard = () => {
       time: '11:15 AM',
       status: 'rejected',
       hasRecord: false
+    },
+    {
+      appointID: 'APT004',
+      bookingTitle: 'Dermatology Checkup',
+      doctorName: 'Dr. Lisa Wang',
+      date: '2024-08-25',
+      time: '9:00 AM',
+      status: 'pending',
+      hasRecord: false
+    },
+    {
+      appointID: 'APT005',
+      bookingTitle: 'Blood Test',
+      doctorName: 'Dr. James Wilson',
+      date: '2024-08-05',
+      time: '8:30 AM',
+      status: 'approved',
+      hasRecord: true,
+      recordId: 'REC002'
     }
   ];
 
@@ -76,8 +126,222 @@ const PatientDashboard = () => {
         'https://via.placeholder.com/300x200/f3e5f5/7b1fa2?text=ECG+Report',
         'https://via.placeholder.com/300x200/e8f5e8/388e3c?text=X-Ray+Chest'
       ]
+    },
+    {
+      recordId: 'REC002',
+      appointID: 'APT005',
+      date: '2024-08-05',
+      doctorName: 'Dr. James Wilson',
+      diagnosis: 'Normal blood work, slight iron deficiency',
+      instructions: 'Continue current diet, add iron-rich foods, repeat blood work in 6 months.',
+      prescriptions: [
+        {
+          medicine: 'Iron Supplement 65mg',
+          qty: 90,
+          enableRefill: true,
+          refillsLeft: 3,
+          instructions: 'Take one tablet daily with vitamin C'
+        }
+      ],
+      images: [
+        'https://via.placeholder.com/300x200/fef3c7/d97706?text=Blood+Panel+Results'
+      ]
     }
   ];
+
+  const timeSlots = [
+    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+    '16:00', '16:30', '17:00', '17:30', '18:00'
+  ];
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  // Reschedule functions
+  const getAvailableDates = () => {
+    const unavailableDates = [
+      '2024-08-05', '2024-08-12', '2024-08-19', '2024-08-26',
+      '2024-09-02', '2024-09-09', '2024-09-16', '2024-09-23', '2024-09-30'
+    ];
+    return unavailableDates;
+  };
+
+  const generateRescheduleCalendarDays = () => {
+    const firstDayOfMonth = new Date(rescheduleYear, rescheduleMonth, 1);
+    const lastDayOfMonth = new Date(rescheduleYear, rescheduleMonth + 1, 0);
+    const firstDayWeekday = firstDayOfMonth.getDay();
+    const daysInMonth = lastDayOfMonth.getDate();
+    const today = new Date();
+    const unavailableDates = getAvailableDates();
+
+    const days = [];
+
+    for (let i = 0; i < firstDayWeekday; i++) {
+      days.push(null);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(rescheduleYear, rescheduleMonth, day);
+      const dateString = date.toISOString().split('T')[0];
+      const isPast = date < today.setHours(0, 0, 0, 0);
+      const isUnavailable = unavailableDates.includes(dateString);
+
+      days.push({
+        date: dateString,
+        day: day,
+        dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        isPast,
+        isAvailable: !isPast && !isUnavailable
+      });
+    }
+
+    return days;
+  };
+
+  const navigateRescheduleMonth = (direction) => {
+    if (direction === 'next') {
+      if (rescheduleMonth === 11) {
+        setRescheduleMonth(0);
+        setRescheduleYear(rescheduleYear + 1);
+      } else {
+        setRescheduleMonth(rescheduleMonth + 1);
+      }
+    } else {
+      if (rescheduleMonth === 0) {
+        setRescheduleMonth(11);
+        setRescheduleYear(rescheduleYear - 1);
+      } else {
+        setRescheduleMonth(rescheduleMonth - 1);
+      }
+    }
+  };
+
+  const formatTime = (time) => {
+    const [hours, minutes] = time.split(':');
+    const hour24 = parseInt(hours);
+    const ampm = hour24 >= 12 ? 'PM' : 'AM';
+    const hour12 = hour24 % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
+  const handleReschedule = (appointmentId) => {
+    const appointment = appointments.find(apt => apt.appointID === appointmentId);
+    setRescheduleModal(appointment);
+    setRescheduleDate('');
+    setRescheduleStartTime('');
+    setRescheduleEndTime('');
+    setRescheduleMonth(new Date().getMonth());
+    setRescheduleYear(new Date().getFullYear());
+  };
+
+  const closeRescheduleModal = () => {
+    setRescheduleModal(null);
+    setRescheduleDate('');
+    setRescheduleStartTime('');
+    setRescheduleEndTime('');
+  };
+
+  const submitReschedule = () => {
+    if (rescheduleDate && rescheduleStartTime && rescheduleEndTime) {
+      alert(`Appointment ${rescheduleModal.appointID} rescheduled to ${rescheduleDate} from ${formatTime(rescheduleStartTime)} to ${formatTime(rescheduleEndTime)}`);
+      closeRescheduleModal();
+    }
+  };
+
+  // Get CSS class for calendar day
+  const getCalendarDayClass = (day) => {
+    let classes = ['calendar-day'];
+
+    if (rescheduleDate === day.date) {
+      classes.push('day-selected');
+    } else if (day.isPast) {
+      classes.push('day-past');
+    } else if (day.isAvailable) {
+      classes.push('day-available');
+    } else {
+      classes.push('day-unavailable');
+    }
+
+    return classes.join(' ');
+  };
+
+  // Filtered appointments based on search and filters
+  const filteredAppointments = useMemo(() => {
+    return appointments.filter(appointment => {
+      const matchesSearch = appointmentSearch === '' ||
+        appointment.bookingTitle.toLowerCase().includes(appointmentSearch.toLowerCase()) ||
+        appointment.doctorName.toLowerCase().includes(appointmentSearch.toLowerCase()) ||
+        appointment.appointID.toLowerCase().includes(appointmentSearch.toLowerCase());
+
+      const matchesStatus = appointmentStatusFilter === 'all' ||
+        appointment.status === appointmentStatusFilter;
+
+      let matchesDate = true;
+      if (appointmentDateFilter !== 'all') {
+        const appointmentDate = new Date(appointment.date);
+        const today = new Date();
+
+        switch (appointmentDateFilter) {
+          case 'upcoming':
+            matchesDate = appointmentDate >= today;
+            break;
+          case 'past':
+            matchesDate = appointmentDate < today;
+            break;
+          case 'this-week':
+            const weekFromToday = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+            matchesDate = appointmentDate >= today && appointmentDate <= weekFromToday;
+            break;
+          case 'this-month':
+            matchesDate = appointmentDate.getMonth() === today.getMonth() &&
+                         appointmentDate.getFullYear() === today.getFullYear();
+            break;
+        }
+      }
+
+      return matchesSearch && matchesStatus && matchesDate;
+    });
+  }, [appointments, appointmentSearch, appointmentStatusFilter, appointmentDateFilter]);
+
+  // Filtered medical records based on search and filters
+  const filteredRecords = useMemo(() => {
+    return medicalRecords.filter(record => {
+      const matchesSearch = recordSearch === '' ||
+        record.diagnosis.toLowerCase().includes(recordSearch.toLowerCase()) ||
+        record.doctorName.toLowerCase().includes(recordSearch.toLowerCase()) ||
+        record.recordId.toLowerCase().includes(recordSearch.toLowerCase()) ||
+        record.appointID.toLowerCase().includes(recordSearch.toLowerCase());
+
+      let matchesDate = true;
+      if (recordDateFilter !== 'all') {
+        const recordDate = new Date(record.date);
+        const today = new Date();
+
+        switch (recordDateFilter) {
+          case 'last-month':
+            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1);
+            matchesDate = recordDate >= lastMonth;
+            break;
+          case 'last-3-months':
+            const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3);
+            matchesDate = recordDate >= threeMonthsAgo;
+            break;
+          case 'last-year':
+            const lastYear = new Date(today.getFullYear() - 1, today.getMonth());
+            matchesDate = recordDate >= lastYear;
+            break;
+          case 'this-year':
+            matchesDate = recordDate.getFullYear() === today.getFullYear();
+            break;
+        }
+      }
+
+      return matchesSearch && matchesDate;
+    });
+  }, [medicalRecords, recordSearch, recordDateFilter]);
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -96,13 +360,24 @@ const PatientDashboard = () => {
     alert(`Refill request submitted for ${medicine}`);
   };
 
+  const clearAllFilters = () => {
+    if (activeTab === 'appointments') {
+      setAppointmentSearch('');
+      setAppointmentStatusFilter('all');
+      setAppointmentDateFilter('all');
+    } else {
+      setRecordSearch('');
+      setRecordDateFilter('all');
+    }
+  };
+
   const AppointmentCard = ({ appointment }) => (
     <div className="appointment-card">
       <div className="card-header">
         <div className="appointment-info">
           <h3 className="appointment-title">{appointment.bookingTitle}</h3>
           <p className="appointment-id">ID: {appointment.appointID}</p>
-          <p className="doctor-name">Dr. {appointment.doctorName}</p>
+          <p className="doctor-name">{appointment.doctorName}</p>
         </div>
         <div className="status-container">
           {getStatusIcon(appointment.status)}
@@ -112,7 +387,6 @@ const PatientDashboard = () => {
         </div>
       </div>
 
-      {/* OPTION 1: Combined Date and Time Container */}
       <div className="appointment-details">
         <div className="combined-datetime">
           <Calendar style={{ width: '16px', height: '16px' }} />
@@ -123,45 +397,458 @@ const PatientDashboard = () => {
         </div>
       </div>
 
-      {/* OPTION 2: Side by Side Clean (uncomment to use) */}
-      {/*
-      <div className="appointment-details">
-        <div className="detail-item-clean">
-          <Calendar style={{ width: '16px', height: '16px' }} />
-          <span>{appointment.date}</span>
-        </div>
-        <div className="detail-item-clean">
-          <Clock style={{ width: '16px', height: '16px' }} />
-          <span>{appointment.time}</span>
-        </div>
-      </div>
-      */}
+      <div className="appointment-actions">
+        {appointment.hasRecord && (
+          <button
+            onClick={() => setSelectedRecord(medicalRecords.find(r => r.recordId === appointment.recordId))}
+            className="view-record-btn"
+          >
+            <FileText style={{ width: '16px', height: '16px' }} />
+            <span>View Medical Record</span>
+          </button>
+        )}
 
-      {/* OPTION 3: Stacked Layout (uncomment to use) */}
-      {/*
-      <div className="appointment-details-stacked">
-        <div className="detail-item-stacked">
-          <Calendar style={{ width: '16px', height: '16px' }} />
-          <span>{appointment.date}</span>
-        </div>
-        <div className="detail-item-stacked indented">
-          <Clock style={{ width: '16px', height: '16px' }} />
-          <span>{appointment.time}</span>
-        </div>
+        {(appointment.status === 'pending' || appointment.status === 'approved') && (
+          <button
+            onClick={() => handleReschedule(appointment.appointID)}
+            className="reschedule-btn"
+          >
+            <Edit3 style={{ width: '16px', height: '16px' }} />
+            <span>Reschedule</span>
+          </button>
+        )}
       </div>
-      */}
-
-      {appointment.hasRecord && (
-        <button
-          onClick={() => setSelectedRecord(medicalRecords.find(r => r.recordId === appointment.recordId))}
-          className="view-record-btn"
-        >
-          <FileText style={{ width: '16px', height: '16px' }} />
-          <span>View Medical Record</span>
-        </button>
-      )}
     </div>
   );
+
+  const RescheduleModal = ({ appointment, onClose }) => {
+    // Track if we should auto-scroll (only when date is newly selected, not month navigation)
+    const [shouldAutoScroll, setShouldAutoScroll] = React.useState(false);
+
+    // Auto-scroll to time section when date is selected (but not during month navigation)
+    React.useEffect(() => {
+      if (rescheduleDate && shouldAutoScroll) {
+        const timeSection = document.getElementById('time-selection-section');
+        if (timeSection) {
+          setTimeout(() => {
+            timeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        }
+        setShouldAutoScroll(false); // Reset flag after scrolling
+      }
+    }, [rescheduleDate, shouldAutoScroll]);
+
+    return (
+      <div className="modal-overlay">
+        <div className="modal-content" style={{ maxWidth: '1100px', maxHeight: '95vh', position: 'relative' }}>
+          <div className="modal-header">
+            <div>
+              <h2 className="modal-title">Reschedule Appointment</h2>
+              <div className="record-info">
+                <p>{appointment.bookingTitle} with {appointment.doctorName}</p>
+                <p>Current: {appointment.date} at {appointment.time}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="close-btn">×</button>
+          </div>
+
+          {/* Fixed container to prevent jumping during month navigation */}
+          <div className="modal-body" style={{ scrollBehavior: 'auto' }}>
+            {/* Step Progress Indicator */}
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px', padding: '16px', background: '#f8fafc', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  background: rescheduleDate ? '#10b981' : '#3b82f6',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}>
+                  <Calendar style={{ width: '16px', height: '16px' }} />
+                  <span>{rescheduleDate ? 'Date Selected' : 'Select Date'}</span>
+                </div>
+                <div style={{ width: '24px', height: '2px', background: rescheduleDate ? '#10b981' : '#d1d5db' }}></div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  background: rescheduleDate ? (rescheduleStartTime && rescheduleEndTime ? '#10b981' : '#3b82f6') : '#e5e7eb',
+                  color: rescheduleDate ? 'white' : '#9ca3af',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}>
+                  <Clock style={{ width: '16px', height: '16px' }} />
+                  <span>{rescheduleStartTime && rescheduleEndTime ? 'Time Selected' : 'Select Time'}</span>
+                </div>
+              </div>
+              {rescheduleDate && rescheduleStartTime && rescheduleEndTime && (
+                <div style={{ marginLeft: 'auto', color: '#059669', fontWeight: '500', fontSize: '14px' }}>
+                  Ready to confirm!
+                </div>
+              )}
+            </div>
+
+            {/* Main Content - Fixed height container to prevent shifting */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: rescheduleDate ? '1fr 1fr' : '1fr',
+              gap: '24px',
+              minHeight: '450px', // Fixed minimum height
+              alignItems: 'start' // Align to top to prevent jumping
+            }}>
+
+              {/* Calendar Section */}
+              <div className="section">
+                <h3 className="section-title">
+                  <Calendar style={{ width: '20px', height: '20px', color: '#3b82f6', marginRight: '8px' }} />
+                  Select New Date
+                </h3>
+
+                <div className="calendar-container" style={{ background: '#f9fafb', padding: '20px', borderRadius: '8px', height: 'fit-content' }}>
+                  {/* Calendar Header - Fixed positioning */}
+                  <div className="calendar-header" style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '20px',
+                    position: 'relative',
+                    zIndex: 1
+                  }}>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigateRescheduleMonth('prev');
+                      }}
+                      className="nav-btn"
+                      style={{
+                        padding: '8px',
+                        border: 'none',
+                        background: 'white',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.target.style.background = '#f3f4f6'}
+                      onMouseLeave={(e) => e.target.style.background = 'white'}
+                    >
+                      <ChevronLeft style={{ width: '20px', height: '20px' }} />
+                    </button>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', minWidth: '180px', textAlign: 'center' }}>
+                      {monthNames[rescheduleMonth]} {rescheduleYear}
+                    </h3>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigateRescheduleMonth('next');
+                      }}
+                      className="nav-btn"
+                      style={{
+                        padding: '8px',
+                        border: 'none',
+                        background: 'white',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.target.style.background = '#f3f4f6'}
+                      onMouseLeave={(e) => e.target.style.background = 'white'}
+                    >
+                      <ChevronRight style={{ width: '20px', height: '20px' }} />
+                    </button>
+                  </div>
+
+                  {/* Week Days */}
+                  <div className="calendar-weekdays">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                      <div key={day} className="weekday">{day}</div>
+                    ))}
+                  </div>
+
+                  {/* Calendar Grid - Fixed height to prevent shifting */}
+                  <div className="calendar-grid" style={{ minHeight: '240px' }}>
+                    {generateRescheduleCalendarDays().map((day, index) => (
+                      <div key={index} className="calendar-cell">
+                        {day ? (
+                          <button
+                            onClick={() => {
+                              if (day.isAvailable) {
+                                setRescheduleDate(day.date);
+                                setRescheduleStartTime('');
+                                setRescheduleEndTime('');
+                                setShouldAutoScroll(true); // Trigger auto-scroll only when date is selected
+                              }
+                            }}
+                            disabled={!day.isAvailable}
+                            className={getCalendarDayClass(day)}
+                          >
+                            {day.day}
+                          </button>
+                        ) : (
+                          <div className="calendar-empty"></div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Calendar Legend */}
+                  <div className="calendar-legend">
+                    <div className="legend-item">
+                      <div className="legend-color available"></div>
+                      <span className="legend-text">Available</span>
+                    </div>
+                    <div className="legend-item">
+                      <div className="legend-color unavailable"></div>
+                      <span className="legend-text">Unavailable</span>
+                    </div>
+                    <div className="legend-item">
+                      <div className="legend-color selected"></div>
+                      <span className="legend-text">Selected</span>
+                    </div>
+                  </div>
+
+                  {/* Selected Date Display */}
+                  {rescheduleDate && (
+                    <div style={{ marginTop: '16px', padding: '12px', background: '#dbeafe', borderRadius: '6px', textAlign: 'center' }}>
+                      <p style={{ margin: 0, color: '#1e40af', fontWeight: '500' }}>
+                        Selected: {new Date(rescheduleDate).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Time Selection - Only show when date is selected */}
+              {rescheduleDate && (
+                <div id="time-selection-section" className="section">
+                  <h3 className="section-title">
+                    <Clock style={{ width: '20px', height: '20px', color: '#3b82f6', marginRight: '8px' }} />
+                    Select New Time Range
+                  </h3>
+
+                  <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '8px', height: 'fit-content' }}>
+                    {/* Quick Time Slots */}
+                    <div style={{ marginBottom: '20px' }}>
+                      <p style={{ fontSize: '14px', fontWeight: '500', marginBottom: '12px', color: '#374151' }}>Quick Select (1 hour slots):</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px' }}>
+                        {['09:00-10:00', '10:00-11:00', '11:00-12:00', '14:00-15:00', '15:00-16:00', '16:00-17:00'].map((slot) => {
+                          const [start, end] = slot.split('-');
+                          return (
+                            <button
+                              key={slot}
+                              onClick={() => {
+                                setRescheduleStartTime(start);
+                                setRescheduleEndTime(end);
+                              }}
+                              className={`quick-time-slot ${
+                                (rescheduleStartTime === start && rescheduleEndTime === end) ? 'selected' : ''
+                              }`}
+                            >
+                              {formatTime(start)} - {formatTime(end)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Custom Time Selection */}
+                    <div className="time-range-container">
+                      <p style={{ fontSize: '14px', fontWeight: '500', marginBottom: '16px', color: '#374151' }}>Or choose custom times:</p>
+                      <div className="time-grid-wrapper">
+                        {/* Start Time */}
+                        <div className="time-column">
+                          <label className="time-label">Start Time</label>
+                          <div className="time-slot-grid">
+                            {timeSlots.map((time) => (
+                              <button
+                                key={`start-${time}`}
+                                onClick={() => setRescheduleStartTime(time)}
+                                disabled={rescheduleEndTime && time >= rescheduleEndTime}
+                                className={`time-slot-btn ${
+                                  rescheduleStartTime === time ? 'selected' : ''
+                                } ${
+                                  (rescheduleEndTime && time >= rescheduleEndTime) ? 'disabled' : ''
+                                }`}
+                              >
+                                {formatTime(time)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* End Time */}
+                        <div className="time-column">
+                          <label className="time-label">End Time</label>
+                          <div className="time-slot-grid">
+                            {timeSlots.map((time) => (
+                              <button
+                                key={`end-${time}`}
+                                onClick={() => setRescheduleEndTime(time)}
+                                disabled={!rescheduleStartTime || time <= rescheduleStartTime}
+                                className={`time-slot-btn ${
+                                  rescheduleEndTime === time ? 'selected' : ''
+                                } ${
+                                  (!rescheduleStartTime || time <= rescheduleStartTime) ? 'disabled' : ''
+                                }`}
+                              >
+                                {formatTime(time)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Fixed Bottom Action Bar */}
+            {rescheduleDate && rescheduleStartTime && rescheduleEndTime && (
+              <div className="time-summary">
+                <div className="summary-info">
+                  <div className="summary-time">
+                    <p style={{ color: '#1e40af', fontWeight: '600', margin: 0, fontSize: '16px' }}>
+                      📅 {new Date(rescheduleDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      at {formatTime(rescheduleStartTime)} - {formatTime(rescheduleEndTime)}
+                    </p>
+                    <p className="summary-duration">
+                      Duration: {((parseInt(rescheduleEndTime.split(':')[0]) * 60 + parseInt(rescheduleEndTime.split(':')[1])) -
+                                 (parseInt(rescheduleStartTime.split(':')[0]) * 60 + parseInt(rescheduleStartTime.split(':')[1]))) / 60} hours
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                      onClick={() => {
+                        setRescheduleDate('');
+                        setRescheduleStartTime('');
+                        setRescheduleEndTime('');
+                        setShouldAutoScroll(false); // Reset auto-scroll flag
+                      }}
+                      style={{
+                        padding: '10px 20px',
+                        background: 'white',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        color: '#374151'
+                      }}
+                    >
+                      Start Over
+                    </button>
+                    <button
+                      onClick={submitReschedule}
+                      className="btn-continue"
+                    >
+                      <Save style={{ width: '18px', height: '18px', marginRight: '8px' }} />
+                      Confirm Reschedule
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const SearchAndFilter = () => (
+    <div className="search-filter-container">
+      <div className="search-section">
+        <div className="search-input-container">
+          <Search className="search-icon" size={18} />
+          <input
+            type="text"
+            placeholder={activeTab === 'appointments' ? 'Search appointments, doctors, or ID...' : 'Search records, diagnosis, or doctor...'}
+            className="search-input"
+            value={activeTab === 'appointments' ? appointmentSearch : recordSearch}
+            onChange={(e) => activeTab === 'appointments' ? setAppointmentSearch(e.target.value) : setRecordSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="filter-section">
+        <div className="filter-group">
+          <Filter className="filter-icon" size={16} />
+          <span className="filter-label">Filters:</span>
+
+          {activeTab === 'appointments' ? (
+            <>
+              <select
+                value={appointmentStatusFilter}
+                onChange={(e) => setAppointmentStatusFilter(e.target.value)}
+                className="filter-select"
+              >
+                <option value="all">All Status</option>
+                <option value="approved">Approved</option>
+                <option value="pending">Pending</option>
+                <option value="rejected">Rejected</option>
+              </select>
+
+              <select
+                value={appointmentDateFilter}
+                onChange={(e) => setAppointmentDateFilter(e.target.value)}
+                className="filter-select"
+              >
+                <option value="all">All Dates</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="past">Past</option>
+                <option value="this-week">This Week</option>
+                <option value="this-month">This Month</option>
+              </select>
+            </>
+          ) : (
+            <select
+              value={recordDateFilter}
+              onChange={(e) => setRecordDateFilter(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">All Dates</option>
+              <option value="last-month">Last Month</option>
+              <option value="last-3-months">Last 3 Months</option>
+              <option value="last-year">Last Year</option>
+              <option value="this-year">This Year</option>
+            </select>
+          )}
+
+          <button onClick={clearAllFilters} className="clear-filters-btn">
+            <RotateCcw size={14} />
+            Clear
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const ResultsCount = () => {
+    const count = activeTab === 'appointments' ? filteredAppointments.length : filteredRecords.length;
+    const total = activeTab === 'appointments' ? appointments.length : medicalRecords.length;
+
+    return (
+      <div className="results-count">
+        Showing {count} of {total} {activeTab === 'appointments' ? 'appointments' : 'records'}
+        {(appointmentSearch || recordSearch || appointmentStatusFilter !== 'all' || appointmentDateFilter !== 'all' || recordDateFilter !== 'all') &&
+          <span className="filtered-indicator"> (filtered)</span>
+        }
+      </div>
+    );
+  };
 
   const MedicalRecordModal = ({ record, onClose }) => (
     <div className="modal-overlay">
@@ -287,6 +974,9 @@ const PatientDashboard = () => {
   return (
     <>
       <style>{`
+        /* BookAppointment.css - Healthcare Theme */
+
+        /* Reset and Base Styles */
         * {
           margin: 0;
           padding: 0;
@@ -295,9 +985,9 @@ const PatientDashboard = () => {
 
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-          background-color: #f9fafb;
+          line-height: 1.6;
           color: #374151;
-          line-height: 1.5;
+          background-color: #f9fafb;
         }
 
         .dashboard-container {
@@ -349,6 +1039,116 @@ const PatientDashboard = () => {
 
         .tab-btn:not(.active):hover {
           color: #1f2937;
+        }
+
+        .search-filter-container {
+          background: white;
+          border-radius: 12px;
+          padding: 20px;
+          margin-bottom: 24px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-section {
+          margin-bottom: 16px;
+        }
+
+        .search-input-container {
+          position: relative;
+          max-width: 400px;
+        }
+
+        .search-icon {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #9ca3af;
+        }
+
+        .search-input {
+          width: 100%;
+          padding: 12px 12px 12px 44px;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          font-size: 16px;
+          transition: all 0.2s;
+        }
+
+        .search-input:focus {
+          outline: none;
+          border-color: #2563eb;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .filter-section {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+
+        .filter-group {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .filter-icon {
+          color: #6b7280;
+        }
+
+        .filter-label {
+          font-weight: 500;
+          color: #374151;
+          font-size: 14px;
+        }
+
+        .filter-select {
+          padding: 8px 12px;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          background-color: white;
+          font-size: 14px;
+          color: #374151;
+          cursor: pointer;
+          transition: border-color 0.2s;
+        }
+
+        .filter-select:focus {
+          outline: none;
+          border-color: #2563eb;
+        }
+
+        .clear-filters-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 12px;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          background-color: white;
+          color: #6b7280;
+          font-size: 14px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .clear-filters-btn:hover {
+          background-color: #f9fafb;
+          color: #374151;
+        }
+
+        .results-count {
+          font-size: 14px;
+          color: #6b7280;
+          margin-bottom: 16px;
+        }
+
+        .filtered-indicator {
+          color: #2563eb;
+          font-weight: 500;
         }
 
         .section-title-main {
@@ -425,7 +1225,6 @@ const PatientDashboard = () => {
           margin-bottom: 16px;
         }
 
-        /* OPTION 1: Combined Date and Time Container */
         .combined-datetime {
           display: flex;
           align-items: center;
@@ -443,60 +1242,50 @@ const PatientDashboard = () => {
           margin: 0 4px;
         }
 
-        /* OPTION 2: Clean Side by Side (no individual backgrounds) */
-        .detail-item-clean {
+        .appointment-actions {
           display: flex;
-          align-items: center;
-          gap: 4px;
-          color: #6b7280;
-          font-size: 14px;
+          gap: 12px;
+          flex-wrap: wrap;
         }
 
-        /* OPTION 3: Stacked Layout */
-        .appointment-details-stacked {
-          margin-bottom: 16px;
-        }
-
-        .detail-item-stacked {
+        .view-record-btn, .refill-btn, .reschedule-btn {
           display: flex;
           align-items: center;
           gap: 8px;
-          color: #6b7280;
-          font-size: 14px;
-          margin-bottom: 4px;
-        }
-
-        .detail-item-stacked.indented {
-          margin-left: 24px;
-          margin-bottom: 0;
-        }
-
-        /* Remove the old detail-item styles that were causing the issue */
-        .detail-item {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          color: #6b7280;
-          font-size: 14px;
-          /* Remove any background, padding, border-radius that was creating separate containers */
-        }
-
-        .view-record-btn, .refill-btn {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          background-color: #3b82f6;
-          color: white;
           padding: 8px 16px;
           border-radius: 8px;
           border: none;
           cursor: pointer;
-          transition: background-color 0.2s;
+          transition: all 0.2s;
           font-size: 14px;
+          font-weight: 500;
+        }
+
+        .view-record-btn {
+          background-color: #3b82f6;
+          color: white;
         }
 
         .view-record-btn:hover {
           background-color: #2563eb;
+        }
+
+        .reschedule-btn {
+          background-color: #f59e0b;
+          color: white;
+        }
+
+        .reschedule-btn:hover {
+          background-color: #d97706;
+        }
+
+        .refill-btn {
+          background-color: #10b981;
+          color: white;
+        }
+
+        .refill-btn:hover {
+          background-color: #059669;
         }
 
         .record-card .view-record-btn {
@@ -610,7 +1399,7 @@ const PatientDashboard = () => {
 
         .prescription-header {
           display: flex;
-          justify-between;
+          justify-content: space-between;
           align-items: flex-start;
           margin-bottom: 12px;
         }
@@ -633,16 +1422,6 @@ const PatientDashboard = () => {
 
         .refills-left {
           color: #059669;
-        }
-
-        .refill-btn {
-          background-color: #10b981;
-          font-size: 14px;
-          padding: 8px 12px;
-        }
-
-        .refill-btn:hover {
-          background-color: #059669;
         }
 
         .no-refill {
@@ -753,6 +1532,292 @@ const PatientDashboard = () => {
           border-radius: 8px;
         }
 
+        /* Calendar Styles */
+        .calendar-container {
+          background: #f8fafc;
+          border-radius: 16px;
+          padding: 24px;
+          margin-bottom: 32px;
+        }
+
+        .calendar-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 24px;
+        }
+
+        .nav-btn {
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+          background-color: #f3f4f6;
+          border-color: #2563eb;
+        }
+
+        .calendar-weekdays {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          gap: 8px;
+          margin-bottom: 16px;
+        }
+
+        .weekday {
+          text-align: center;
+          font-weight: 600;
+          color: #6b7280;
+          padding: 8px;
+          font-size: 14px;
+        }
+
+        .calendar-grid {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          gap: 8px;
+        }
+
+        .calendar-cell {
+          aspect-ratio: 1;
+          position: relative;
+        }
+
+        .calendar-day {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          border: 2px solid transparent;
+          font-size: 14px;
+        }
+
+        .day-past {
+          color: #d1d5db !important;
+          cursor: not-allowed !important;
+          background-color: #f9fafb !important;
+          border-color: #f3f4f6 !important;
+        }
+
+        .day-available {
+          background-color: #d1fae5 !important;
+          color: #065f46 !important;
+          border-color: #34d399 !important;
+        }
+
+        .day-available:hover {
+          background-color: #a7f3d0 !important;
+          border-color: #10b981 !important;
+          transform: scale(1.05) !important;
+        }
+
+        .day-unavailable {
+          background-color: #fef2f2 !important;
+          color: #ef4444 !important;
+          cursor: not-allowed !important;
+          border-color: #fecaca !important;
+        }
+
+        .day-selected {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+          color: white !important;
+          border-color: #4f46e5 !important;
+          transform: scale(1.1) !important;
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+          font-weight: 600 !important;
+        }
+
+        .calendar-empty {
+          height: 100%;
+        }
+
+        .calendar-legend {
+          display: flex;
+          justify-content: center;
+          gap: 24px;
+          margin-top: 24px;
+          flex-wrap: wrap;
+        }
+
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .legend-color {
+          width: 16px;
+          height: 16px;
+          border-radius: 4px;
+          border: 1px solid #e5e7eb;
+        }
+
+        .legend-color.available {
+          background-color: #d1fae5;
+          border-color: #34d399;
+        }
+
+        .legend-color.unavailable {
+          background-color: #fef2f2;
+          border-color: #fecaca;
+        }
+
+        .legend-color.selected {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-color: #4f46e5;
+        }
+
+        .legend-text {
+          font-size: 14px;
+          color: #6b7280;
+        }
+
+        /* Time Range Selection */
+        .time-range-container {
+          margin-top: 32px;
+        }
+
+        .time-grid-wrapper {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 32px;
+        }
+
+        .time-column {
+          background: #f8fafc;
+          padding: 20px;
+          border-radius: 12px;
+        }
+
+        .time-label {
+          font-size: 16px;
+          font-weight: 600;
+          color: #1f2937;
+          margin-bottom: 16px;
+          display: block;
+        }
+
+        .time-slot-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+          max-height: 240px;
+          overflow-y: auto;
+          padding-right: 8px;
+        }
+
+        .time-slot-btn {
+          padding: 12px 8px;
+          border: 2px solid #e5e7eb;
+          border-radius: 8px;
+          background: white;
+          color: #374151;
+          font-size: 12px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          text-align: center;
+        }
+
+        .time-slot-btn:hover:not(.disabled) {
+          border-color: #2563eb;
+          background-color: #eff6ff;
+        }
+
+        .time-slot-btn.selected {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border-color: #4f46e5;
+          box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .time-slot-btn.disabled {
+          background-color: #f9fafb;
+          color: #d1d5db;
+          cursor: not-allowed;
+          border-color: #f3f4f6;
+        }
+
+        .time-summary {
+          margin-top: 24px;
+          padding: 20px;
+          background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+          border-radius: 12px;
+          border: 1px solid #bfdbfe;
+        }
+
+        .summary-info {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+
+        .summary-time {
+          flex: 1;
+        }
+
+        .summary-duration {
+          font-size: 14px;
+          color: #2563eb;
+          margin-top: 4px;
+        }
+
+        .btn-continue {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-weight: 600;
+          border: none;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .btn-continue:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Quick time slot styles */
+        .quick-time-slot {
+          padding: 10px 12px;
+          border: 2px solid #e5e7eb;
+          border-radius: 8px;
+          background: white;
+          color: #374151;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          text-align: center;
+        }
+
+        .quick-time-slot:hover {
+          border-color: #2563eb;
+          background-color: #eff6ff;
+        }
+
+        .quick-time-slot.selected {
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          color: white;
+          border-color: #059669;
+          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+
         @media (max-width: 768px) {
           .container {
             padding: 16px 8px;
@@ -773,6 +1838,11 @@ const PatientDashboard = () => {
             justify-content: flex-start;
           }
 
+          .appointment-actions {
+            flex-direction: column;
+            gap: 8px;
+          }
+
           .prescription-header {
             flex-direction: column;
             gap: 8px;
@@ -781,11 +1851,40 @@ const PatientDashboard = () => {
           .images-grid {
             grid-template-columns: 1fr;
           }
+
+          .filter-section {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+
+          .filter-group {
+            flex-wrap: wrap;
+            gap: 8px;
+          }
+
+          .time-grid-wrapper {
+            grid-template-columns: 1fr;
+            gap: 20px;
+          }
+
+          .time-slot-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+
+          .calendar-legend {
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .time-slot-grid {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
-<div>
-        {/* Header */}
-        <PatientHeader />
 
       <div className="dashboard-container">
         <div className="container">
@@ -807,14 +1906,33 @@ const PatientDashboard = () => {
             </button>
           </div>
 
+          {/* Search and Filter Component */}
+          <SearchAndFilter />
+
+          {/* Results Count */}
+          <ResultsCount />
+
           {/* Appointments Tab */}
           {activeTab === 'appointments' && (
             <div>
               <h2 className="section-title-main">My Appointments</h2>
               <div>
-                {appointments.map((appointment) => (
-                  <AppointmentCard key={appointment.appointID} appointment={appointment} />
-                ))}
+                {filteredAppointments.length > 0 ? (
+                  filteredAppointments.map((appointment) => (
+                    <AppointmentCard key={appointment.appointID} appointment={appointment} />
+                  ))
+                ) : (
+                  <div style={{
+                    background: 'white',
+                    padding: '40px',
+                    borderRadius: '8px',
+                    textAlign: 'center',
+                    color: '#6b7280'
+                  }}>
+                    <AlertCircle size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
+                    <p>No appointments found matching your criteria.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -824,35 +1942,56 @@ const PatientDashboard = () => {
             <div>
               <h2 className="section-title-main">Medical Records</h2>
               <div>
-                {medicalRecords.map((record) => (
-                  <div key={record.recordId} className="record-card">
-                    <div className="card-header">
-                      <div className="appointment-info">
-                        <h3 className="appointment-title">Medical Record #{record.recordId}</h3>
-                        <p className="appointment-id">Appointment: {record.appointID}</p>
-                        <p className="doctor-name">Dr. {record.doctorName}</p>
+                {filteredRecords.length > 0 ? (
+                  filteredRecords.map((record) => (
+                    <div key={record.recordId} className="record-card">
+                      <div className="card-header">
+                        <div className="appointment-info">
+                          <h3 className="appointment-title">Medical Record #{record.recordId}</h3>
+                          <p className="appointment-id">Appointment: {record.appointID}</p>
+                          <p className="doctor-name">{record.doctorName}</p>
+                        </div>
+                        <div style={{ color: '#6b7280', fontSize: '14px' }}>
+                          {record.date}
+                        </div>
                       </div>
-                      <div style={{ color: '#6b7280', fontSize: '14px' }}>
-                        {record.date}
+
+                      <div style={{ marginBottom: '16px' }}>
+                        <p style={{ fontWeight: '500', color: '#374151' }}>Diagnosis:</p>
+                        <p style={{ color: '#6b7280' }}>{record.diagnosis}</p>
                       </div>
-                    </div>
 
-                    <div style={{ marginBottom: '16px' }}>
-                      <p style={{ fontWeight: '500', color: '#374151' }}>Diagnosis:</p>
-                      <p style={{ color: '#6b7280' }}>{record.diagnosis}</p>
+                      <button
+                        onClick={() => setSelectedRecord(record)}
+                        className="view-record-btn"
+                      >
+                        <FileText style={{ width: '16px', height: '16px' }} />
+                        <span>View Full Record</span>
+                      </button>
                     </div>
-
-                    <button
-                      onClick={() => setSelectedRecord(record)}
-                      className="view-record-btn"
-                    >
-                      <FileText style={{ width: '16px', height: '16px' }} />
-                      <span>View Full Record</span>
-                    </button>
+                  ))
+                ) : (
+                  <div style={{
+                    background: 'white',
+                    padding: '40px',
+                    borderRadius: '8px',
+                    textAlign: 'center',
+                    color: '#6b7280'
+                  }}>
+                    <FileText size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
+                    <p>No medical records found matching your criteria.</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
+          )}
+
+          {/* Reschedule Modal */}
+          {rescheduleModal && (
+            <RescheduleModal
+              appointment={rescheduleModal}
+              onClose={closeRescheduleModal}
+            />
           )}
 
           {/* Medical Record Modal */}
@@ -872,8 +2011,6 @@ const PatientDashboard = () => {
           )}
         </div>
       </div>
-      <PatientFooter />
-                  </div>
     </>
   );
 };

@@ -12,6 +12,7 @@ const ModernInventoryList = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Inventory modal states
   const [actualQuantity, setActualQuantity] = useState('');
@@ -22,6 +23,24 @@ const ModernInventoryList = () => {
   // Restock modal states
   const [supplierName, setSupplierName] = useState('');
   const [rejectReason, setRejectReason] = useState('');
+
+  // Create order form states
+  const [createFormData, setCreateFormData] = useState({
+    medication: '',
+    quantity: '',
+    expectedExpiry: '',
+    supplier: ''
+  });
+
+  // Medication options for the create form
+  const medicationOptions = [
+    { value: 'Paracetamol 500mg', label: 'Paracetamol 500mg Tablet' },
+    { value: 'Amoxicillin 250mg', label: 'Amoxicillin 250mg Capsule' },
+    { value: 'Ibuprofen 400mg', label: 'Ibuprofen 400mg Tablet' },
+    { value: 'Metformin 500mg', label: 'Metformin 500mg Tablet' },
+    { value: 'Lisinopril 10mg', label: 'Lisinopril 10mg Tablet' },
+    { value: 'Atorvastatin 20mg', label: 'Atorvastatin 20mg Tablet' },
+  ];
 
   // Sample inventory orders data
   const [inventoryOrders, setInventoryOrders] = useState([
@@ -220,6 +239,84 @@ const ModernInventoryList = () => {
     setSelectedRecord(null);
   };
 
+  // Handle create order modal
+  const handleOpenCreateModal = () => {
+    setCreateFormData({
+      medication: '',
+      quantity: '',
+      expectedExpiry: '',
+      supplier: ''
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleCreateFormChange = (field, value) => {
+    setCreateFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const validateCreateForm = () => {
+    const required = ['medication', 'quantity', 'expectedExpiry', 'supplier'];
+
+    for (let field of required) {
+      if (!createFormData[field]) {
+        alert(`${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} is required`);
+        return false;
+      }
+    }
+
+    if (parseInt(createFormData.quantity) <= 0) {
+      alert('Quantity must be greater than 0');
+      return false;
+    }
+
+    const selectedDate = new Date(createFormData.expectedExpiry);
+    const today = new Date();
+    if (selectedDate <= today) {
+      alert('Expected expiry date must be in the future');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleCreateSubmit = () => {
+    if (!validateCreateForm()) return;
+
+    // Generate new order ID
+    const newOrderId = `ORD${String(inventoryOrders.length + 1).padStart(3, '0')}`;
+
+    const newOrder = {
+      id: newOrderId,
+      medication: createFormData.medication,
+      quantity: parseInt(createFormData.quantity),
+      expectedExpiry: createFormData.expectedExpiry,
+      supplier: createFormData.supplier,
+      actualQuantity: '',
+      actualExpiry: '',
+      notes: '',
+      status: 'Pending',
+      orderDate: new Date().toISOString().split('T')[0]
+    };
+
+    setInventoryOrders(prev => [...prev, newOrder]);
+    setShowCreateModal(false);
+
+    // Reset form
+    setCreateFormData({
+      medication: '',
+      quantity: '',
+      expectedExpiry: '',
+      supplier: ''
+    });
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+  };
+
   // Get status badge styling
   const getStatusBadge = (status) => {
     const styles = {
@@ -258,7 +355,7 @@ const ModernInventoryList = () => {
             <Download size={16} />
             Export
           </button>
-          <button className="inventory-btn primary">
+          <button className="inventory-btn primary" onClick={handleOpenCreateModal}>
             <Plus size={16} />
             New Order
           </button>
@@ -785,6 +882,99 @@ const ModernInventoryList = () => {
                   Submit Decision
                 </button>
               )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Create Order Modal */}
+      {showCreateModal && (
+        <>
+          <div className="inventory-modal-backdrop" onClick={closeCreateModal}></div>
+          <div className="inventory-modal large">
+            <div className="inventory-modal-header">
+              <h3>Create New Inventory Order</h3>
+              <button className="inventory-modal-close" onClick={closeCreateModal}>×</button>
+            </div>
+            <div className="inventory-modal-content">
+
+              <div className="inventory-form-section">
+                <h4>Order Details</h4>
+                <div className="inventory-form-grid">
+                  <div className="inventory-form-group">
+                    <label>Medication *</label>
+                    <select
+                      value={createFormData.medication}
+                      onChange={(e) => handleCreateFormChange('medication', e.target.value)}
+                      className="inventory-form-select"
+                    >
+                      <option value="">-- Select Medication --</option>
+                      {medicationOptions.map((med) => (
+                        <option key={med.value} value={med.value}>
+                          {med.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="inventory-form-group">
+                    <label>Quantity to Order *</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={createFormData.quantity}
+                      onChange={(e) => handleCreateFormChange('quantity', e.target.value)}
+                      className="inventory-form-input"
+                      placeholder="Enter quantity"
+                    />
+                  </div>
+
+                  <div className="inventory-form-group">
+                    <label>Expected Expiry Date *</label>
+                    <input
+                      type="date"
+                      value={createFormData.expectedExpiry}
+                      onChange={(e) => handleCreateFormChange('expectedExpiry', e.target.value)}
+                      className="inventory-form-input"
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+
+                  <div className="inventory-form-group">
+                    <label>Supplier Name *</label>
+                    <input
+                      type="text"
+                      value={createFormData.supplier}
+                      onChange={(e) => handleCreateFormChange('supplier', e.target.value)}
+                      className="inventory-form-input"
+                      placeholder="Enter supplier name"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="create-order-note">
+                <div className="note-icon">
+                  <Package size={20} />
+                </div>
+                <div className="note-content">
+                  <h5>Order Information</h5>
+                  <p>This order will be created with "Pending" status and will need to be processed when received.</p>
+                </div>
+              </div>
+
+            </div>
+            <div className="inventory-modal-actions">
+              <button className="inventory-btn secondary" onClick={closeCreateModal}>
+                Cancel
+              </button>
+              <button
+                className="inventory-btn primary"
+                onClick={handleCreateSubmit}
+                disabled={!createFormData.medication || !createFormData.quantity || !createFormData.expectedExpiry || !createFormData.supplier}
+              >
+                Create Order
+              </button>
             </div>
           </div>
         </>
@@ -1510,6 +1700,46 @@ const ModernInventoryList = () => {
         .inventory-radio-label {
           color: #374151;
           font-size: 14px;
+        }
+
+        .create-order-note {
+          display: flex;
+          gap: 12px;
+          padding: 16px;
+          background: rgba(102, 126, 234, 0.1);
+          border: 1px solid rgba(102, 126, 234, 0.2);
+          border-radius: 12px;
+          margin-top: 24px;
+        }
+
+        .note-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          flex-shrink: 0;
+        }
+
+        .note-content {
+          flex: 1;
+        }
+
+        .note-content h5 {
+          margin: 0 0 4px 0;
+          font-size: 14px;
+          font-weight: 600;
+          color: #667eea;
+        }
+
+        .note-content p {
+          margin: 0;
+          font-size: 13px;
+          color: #64748b;
+          line-height: 1.4;
         }
 
         /* Mobile Responsive */
