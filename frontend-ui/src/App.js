@@ -1,65 +1,32 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import React, { lazy, Suspense } from 'react';
-import Login from './Pages/UserManagement/Login';
-import Register from './Pages/UserManagement/Register';
-import ForgetPasswordForEmail from './Pages/UserManagement/ForgetPasswordForEmail';
-import ResetPassword from './Pages/UserManagement/ResetPassword';
-import ProfilePage from './Pages/UserManagement/ProfilePage';
-import CreateUser from './Pages/AdminPortal/CreateUser';
-import UserList2 from './Pages/AdminPortal/UserList';
-import VerificationICList from './Pages/AdminPortal/VerificationICList';
-import MedicalRecordForm from './Pages/AdminPortal/MedicalRecordForm';
-import MedicalRecordList2 from './Pages/AdminPortal/MedicalRecordList';
-import MedicalRecordEditForm from './Pages/AdminPortal/MedicalRecordEditForm';
-import Medicine from './Pages/AdminPortal/Medicine';
-import MedicineList2 from './Pages/AdminPortal/MedicineList';
-import Inventory from './Pages/AdminPortal/Inventory';
-import InventoryList2 from './Pages/AdminPortal/InventoryList';
-import RestockMedicineRequest from './Pages/AdminPortal/RestockMedicineRequest';
-import Schedule from './Pages/AdminPortal/Schedule';
-import DispenseList2 from './Pages/AdminPortal/DispenseList';
-import RefillRequestList from './Pages/AdminPortal/RefillRequestList';
-import AppointmentList from './Pages/AdminPortal/AppointmentList';
-import Testing from './Pages/AdminPortal/Testing';
-import Testing2 from './Pages/AdminPortal/Testing2';
-import Testing4 from './Pages/AdminPortal/Testing4';
-
-import AdminDashBoard from './Pages/AdminPortal/AdminDashBoard';
-
-import AppointmentAndMedicalRecord from './Pages/HomePage/AppointmentAndMedicalRecord';
-import BookAppointment from './Pages/HomePage/BookAppointment';
-import Login2 from './Pages/HomePage/Login';
-import Register2 from './Pages/HomePage/Register';
-import Profile from './Pages/HomePage/Profile';
-import Billing from './Pages/HomePage/Billing';
-import Payment from './Pages/HomePage/Payment';
-import LoginRegister from './Pages/HomePage/Login_Register_forget';
-
-
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-
+//Admin,Doctor,Pharmarcist Side
 import AdminLayout from './Pages/Admin/AdminLayout';
-
 import Schedule2 from './Pages/Admin/Schedule';
 import Dashboard from './Pages/Admin/Dashboard';
 import UserList from './Pages/Admin/UserList';
-import UserIcVerificationList from './Pages/Admin/UserIcVerificationList';
+import SecurityTest from './Components/SecurityTest';
 import MedicalRecordList from './Pages/Admin/MedicalRecordList';
 import MedicineList from './Pages/Admin/MedicineList';
 import DispenseList from './Pages/Admin/DispenseList';
 import InventoryList from './Pages/Admin/InventoryList';
 import PaymentList from './Pages/Admin/PaymentList';
 import Report from './Pages/Admin/Report';
+//Admin,Doctor,Pharmarcist Side
 
-const Admin = lazy(() => import('./Pages/AdminPortal/Admin'));
-const HomePage = lazy(() => import('./Pages/HomePage/HomePage')); // now not used
+//Patient Side
+import AppointmentAndMedicalRecord from './Pages/HomePage/AppointmentAndMedicalRecord';
+import BookAppointment from './Pages/HomePage/BookAppointment';
+import Profile from './Pages/HomePage/Profile';
+import Billing from './Pages/HomePage/Billing';
+import Payment from './Pages/HomePage/Payment';
+import LoginRegister from './Pages/HomePage/Login_Register_forget';
+//Patient Side
 
 const PatientHomePage = lazy(() => import('./Pages/HomePage/PatientHomePage'));
-
-
-
 
 function App() {
   return (
@@ -69,31 +36,18 @@ function App() {
           <Suspense fallback={<div>Loading...</div>}>
             <Routes>
               {/* Public Patient-Side Pages */}
-              <Route path="/" element={<AdminLayout currentPage="appointments" onPageChange={(newPage) => console.log("Page changed to", newPage)} />}>
+              <Route path="/admin" element={<AdminLayout currentPage="appointments" onPageChange={(newPage) => console.log("Page changed to", newPage)} />}>
                 {/* These are nested routes inside AdminLayout */}
                 <Route index element={<Dashboard />} />
-                <Route path="create-user" element={<CreateUser />} />
-                <Route path="list-user" element={<UserList2 />} />
-                <Route path="ic-verify" element={<VerificationICList />} />
-                <Route path="create-medical" element={<MedicalRecordForm />} />
                 <Route path="medical-list" element={<MedicalRecordList />} />
-                <Route path="medical-edit" element={<MedicalRecordEditForm />} />
-                <Route path="medicine" element={<Medicine />} />
                 <Route path="medicine-list" element={<MedicineList />} />
-                <Route path="inventory" element={<Inventory />} />
                 <Route path="inventory-list" element={<InventoryList />} />
-                <Route path="restock-list" element={<RestockMedicineRequest />} />
                 <Route path="dispense-list" element={<DispenseList />} />
-                <Route path="refill-request" element={<RefillRequestList />} />
-                <Route path="appointment-list" element={<AppointmentList />} />
-                <Route path="testing" element={<Testing />} />
-                <Route path="Testing2" element={<Testing2 />} />
-                <Route path="Testing4" element={<Testing4 />} />
-                <Route path="schedule" element={<Schedule2 />} />
 //                <Route path="dashboard" element={<Dashboard />} />
 
+                <Route path="schedule" element={<Schedule2 />} />
                 <Route path="userlist" element={<UserList />} />
-                <Route path="userverificationlist" element={<UserIcVerificationList />} />
+
                 <Route path="medicalRecordList" element={<MedicalRecordList />} />
                 <Route path="medicineList" element={<MedicineList />} />
                 <Route path="dispenseList" element={<DispenseList />} />
@@ -101,24 +55,20 @@ function App() {
                 <Route path="paymentList" element={<PaymentList />} />
                  <Route path="report" element={<Report />} />
               </Route>
+
+              //Patient Side
               <Route path="/PatientHomePage" element={<PatientHomePage />} />
               {/* Non-AdminLayout routes
-               <Route path="/" element={<PatientHomePage />} /> */}
+               <Route path="/" element={<SecurityTest  />} /> */}
+               <Route path="/" element={<SecurityTest  />} />
               <Route path="/AppointmentAndMedicalRecord" element={<AppointmentAndMedicalRecord />} />
               <Route path="/BookAppointment" element={<BookAppointment />} />
-              <Route path="/Login" element={<Login2 />} />
-              <Route path="/Register" element={<Register2 />} />
+
               <Route path="/Profile" element={<Profile />} />
               <Route path="/Billing" element={<Billing />} />
-              <Route path="/AdminDashBoard" element={<AdminDashBoard />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgetPasswordForEmail" element={<ForgetPasswordForEmail />} />
-              <Route path="/resetPassword" element={<ResetPassword />} />
-              <Route path="/profilePage" element={<ProfilePage />} />
               <Route path="/payment" element={<Payment />} />
               <Route path="/loginRegister" element={<LoginRegister />} />
-
+               //Patient Side
 
             </Routes>
           </Suspense>

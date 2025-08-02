@@ -1,7 +1,52 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Edit3, Trash2, Filter, ChevronDown, ChevronUp, FileText, Clock, CheckCircle, AlertCircle, Eye, Download, RefreshCw, X } from 'lucide-react';
+import { Search, Plus, Edit3, Trash2, Filter, ChevronDown, ChevronUp, FileText, Clock, CheckCircle, AlertCircle, Eye, Download, RefreshCw, X, Shield, Lock, Database, Key } from 'lucide-react';
 
-const ModernMedicalRecordList = () => {
+// Mock API service for demo
+const ApiService = {
+  createSecureRecord: async (formData) => {
+    // Simulate API call
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          data: {
+            recordId: `MR${String(Math.floor(Math.random() * 999) + 1).padStart(3, '0')}`,
+            blockchain: {
+              blockHash: `0x${Math.random().toString(16).substr(2, 64)}`,
+              transactionId: `tx_${Math.random().toString(16).substr(2, 32)}`
+            },
+            anonymousAccess: {
+              blindSignature: `bs_${Math.random().toString(16).substr(2, 32)}`
+            },
+            steganography: formData.get('images') ? [
+              { extractionKey: `steg_${Math.random().toString(16).substr(2, 16)}` }
+            ] : [],
+            securityFeatures: {
+              anonymous: JSON.parse(formData.get('securityOptions')).useAnonymousAccess,
+              steganography: JSON.parse(formData.get('securityOptions')).enableSteganography,
+              blockchain: JSON.parse(formData.get('securityOptions')).storeOnBlockchain
+            }
+          }
+        });
+      }, 1500);
+    });
+  },
+  verifyRecordIntegrity: async (recordId) => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          verification: {
+            isValid: Math.random() > 0.2, // 80% chance of being valid
+            lastModified: new Date().toISOString(),
+            blockHeight: Math.floor(Math.random() * 100000)
+          }
+        });
+      }, 1000);
+    });
+  }
+};
+
+const SecureMedicalRecordManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRecords, setSelectedRecords] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -15,13 +60,31 @@ const ModernMedicalRecordList = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
 
-  // Form states
+  // Security-related states
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [securityOperation, setSecurityOperation] = useState('');
+  const [blockchainStatus, setBlockchainStatus] = useState({});
+  const [anonymousRecordData, setAnonymousRecordData] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Enhanced form states with security features
   const [formData, setFormData] = useState({
     patient: '',
     diagnosis: '',
     prescriptions: [],
-    images: []
+    images: [],
+    // Security options
+    useAnonymousAccess: false,
+    enableSteganography: false,
+    storeOnBlockchain: true,
+    emergencyData: {
+      bloodType: '',
+      allergies: [],
+      emergencyContact: '',
+      criticalMedications: []
+    }
   });
+
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState(null);
@@ -39,20 +102,22 @@ const ModernMedicalRecordList = () => {
     { label: 'Ibuprofen', value: 'ibuprofen' },
     { label: 'Amoxicillin', value: 'amoxicillin' },
     { label: 'Metformin', value: 'metformin' },
-    { label: 'Aspirin', value: 'aspirin' }
+    { label: 'Aspirin', value: 'aspirin' },
+    { label: 'Lisinopril', value: 'lisinopril' },
+    { label: 'Simvastatin', value: 'simvastatin' },
+    { label: 'Omeprazole', value: 'omeprazole' }
   ];
 
   const patientOptions = [
     { label: 'John Doe', value: 'john' },
     { label: 'Jane Smith', value: 'jane' },
     { label: 'Ahmad Rahman', value: 'ahmad' },
-    { label: 'Sarah Wilson', value: 'sarah' }
+    { label: 'Sarah Wilson', value: 'sarah' },
+    { label: 'Michael Chen', value: 'michael' },
+    { label: 'Emily Johnson', value: 'emily' }
   ];
 
-  // Placeholder image URL for demo
-  const userImg = 'https://via.placeholder.com/150x150/f0f0f0/666?text=Medical+Image';
-
-  // Sample medical records data
+  // Enhanced medical records with blockchain integration
   const [records, setRecords] = useState([
     {
       id: 'MR001',
@@ -61,58 +126,243 @@ const ModernMedicalRecordList = () => {
       patientId: 'P1234',
       date: '2024-07-27',
       diagnosis: 'Flu with mild symptoms, prescribed Paracetamol for fever and body aches',
-      prescriptions: ['Paracetamol 500mg', 'Vitamin C'],
-      images: [userImg],
+      prescriptions: ['Paracetamol 500mg - Take twice daily', 'Vitamin C - Once daily'],
+      images: ['https://via.placeholder.com/150x150/f0f0f0/666?text=Medical+Image'],
       status: 'Pending',
       doctorName: 'Dr. Ahmad Rahman',
       createdAt: '2024-07-27',
-      lastModified: '2024-07-27'
+      lastModified: '2024-07-27',
+      // Security metadata
+      blockchainHash: 'bc_hash_001',
+      isAnonymous: false,
+      hasSteganography: false,
+      securityLevel: 'Standard'
     },
     {
       id: 'MR002',
       recordId: 'MR002',
-      patientName: 'Jane Smith',
-      patientId: 'P5678',
+      patientName: 'Anonymous Patient',
+      patientId: 'ANON_001',
       date: '2024-07-20',
-      diagnosis: 'High blood pressure – prescribed Metformin and lifestyle changes',
-      prescriptions: ['Metformin 850mg', 'Aspirin 100mg'],
-      images: [userImg, userImg],
+      diagnosis: 'Confidential medical consultation with privacy protection',
+      prescriptions: ['Prescribed medications (encrypted)'],
+      images: ['https://via.placeholder.com/150x150/4ade80/fff?text=Secured+Image'],
       status: 'Completed',
-      doctorName: 'Dr. Sarah Wilson',
+      doctorName: 'Dr. Confidential',
       createdAt: '2024-07-20',
-      lastModified: '2024-07-21'
-    },
-    {
-      id: 'MR003',
-      recordId: 'MR003',
-      patientName: 'Ahmad Rahman',
-      patientId: 'P9012',
-      date: '2024-07-25',
-      diagnosis: 'Regular checkup - all vitals normal, continue current medication',
-      prescriptions: ['Multivitamin'],
-      images: [userImg],
-      status: 'Completed',
-      doctorName: 'Dr. Michael Chen',
-      createdAt: '2024-07-25',
-      lastModified: '2024-07-25'
-    },
-    {
-      id: 'MR004',
-      recordId: 'MR004',
-      patientName: 'Sarah Johnson',
-      patientId: 'P3456',
-      date: '2024-07-28',
-      diagnosis: 'Throat infection - prescribed antibiotics and rest',
-      prescriptions: ['Amoxicillin 500mg', 'Throat lozenges'],
-      images: [],
-      status: 'Pending',
-      doctorName: 'Dr. Li Wei',
-      createdAt: '2024-07-28',
-      lastModified: '2024-07-28'
+      lastModified: '2024-07-21',
+      // Security metadata
+      blockchainHash: 'bc_hash_002',
+      isAnonymous: true,
+      hasSteganography: true,
+      securityLevel: 'High Privacy'
     }
   ]);
 
-  // Real-time search and filter
+  // Enhanced form submission with security features
+  const handleSecureSubmitForm = async () => {
+    if (!formData.patient || !formData.diagnosis) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      console.log('🔐 Starting secure medical record creation...');
+
+      // Prepare form data for submission
+      const submitFormData = new FormData();
+
+      // Basic record data
+      const recordData = {
+        recordId: `MR${String(records.length + 1).padStart(3, '0')}`,
+        patientId: formData.useAnonymousAccess ?
+          `ANON_${Math.floor(Math.random() * 9999)}` :
+          `P${Math.floor(Math.random() * 9999)}`,
+        patientName: formData.useAnonymousAccess ? 'Anonymous Patient' : formData.patient,
+        diagnosis: formData.diagnosis,
+        prescriptions: formData.prescriptions.map(p =>
+          `${p.medicine?.label || p.medicine} ${p.quantity}${p.instruction ? ' - ' + p.instruction : ''}`
+        ),
+        doctorId: 'current_doctor_id',
+        timestamp: Date.now()
+      };
+
+      submitFormData.append('recordData', JSON.stringify(recordData));
+
+      // Security options
+      const securityOptions = {
+        useAnonymousAccess: formData.useAnonymousAccess,
+        enableSteganography: formData.enableSteganography,
+        storeOnBlockchain: formData.storeOnBlockchain
+      };
+
+      submitFormData.append('securityOptions', JSON.stringify(securityOptions));
+
+      // Emergency data for steganography
+      if (formData.enableSteganography) {
+        console.log('🖼️ Preparing steganography data...');
+        submitFormData.append('emergencyData', JSON.stringify(formData.emergencyData));
+      }
+
+      // Add image files
+      formData.images.forEach((image, index) => {
+        if (image.file) {
+          submitFormData.append('images', image.file);
+        }
+      });
+
+      // Submit to backend
+      console.log('📤 Submitting to backend...');
+      const response = await ApiService.createSecureRecord(submitFormData);
+
+      if (response.success) {
+        // Create new record for UI
+        const newRecord = {
+          id: response.data.recordId,
+          recordId: response.data.recordId,
+          patientName: recordData.patientName,
+          patientId: recordData.patientId,
+          date: new Date().toISOString().split('T')[0],
+          diagnosis: formData.diagnosis,
+          prescriptions: recordData.prescriptions,
+          images: formData.images.map(img => img.src),
+          status: 'Pending',
+          doctorName: 'Current Doctor',
+          createdAt: new Date().toISOString().split('T')[0],
+          lastModified: new Date().toISOString().split('T')[0],
+
+          // Security metadata from backend response
+          isAnonymous: formData.useAnonymousAccess,
+          hasSteganography: formData.enableSteganography,
+          blockchainHash: response.data.blockchain?.blockHash,
+          blockchainTxId: response.data.blockchain?.transactionId,
+          anonymousSignature: response.data.anonymousAccess?.blindSignature,
+          steganographyKeys: response.data.steganography?.map(s => s.extractionKey),
+          securityLevel: determineSecurityLevel(response.data.securityFeatures)
+        };
+
+        // Update records
+        if (showEditModal && selectedRecord) {
+          setRecords(prev => prev.map(record =>
+            record.id === selectedRecord.id ? { ...newRecord, id: selectedRecord.id } : record
+          ));
+          setShowEditModal(false);
+        } else {
+          setRecords(prev => [...prev, newRecord]);
+          setShowCreateModal(false);
+        }
+
+        // Show security summary
+        setAnonymousRecordData(newRecord);
+        setSecurityOperation('summary');
+        setShowSecurityModal(true);
+
+        console.log('✅ Secure medical record created successfully!');
+
+      } else {
+        throw new Error(response.message || 'Unknown error occurred');
+      }
+
+    } catch (error) {
+      console.error('❌ Secure form submission failed:', error);
+      alert(`Failed to create secure medical record: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Helper function to determine security level
+  const determineSecurityLevel = (securityFeatures) => {
+    if (securityFeatures?.anonymous && securityFeatures?.steganography) {
+      return 'High Privacy';
+    } else if (securityFeatures?.anonymous) {
+      return 'Anonymous';
+    } else if (securityFeatures?.steganography) {
+      return 'Steganographic';
+    } else if (securityFeatures?.blockchain) {
+      return 'Blockchain';
+    }
+    return 'Standard';
+  };
+
+  // Blockchain verification
+  const handleBlockchainVerification = async (record) => {
+    try {
+      console.log('🔍 Verifying blockchain integrity...');
+      setSelectedRecord(record);
+
+      const response = await ApiService.verifyRecordIntegrity(record.id);
+
+      setBlockchainStatus(prev => ({
+        ...prev,
+        [record.id]: response.verification
+      }));
+
+      setSecurityOperation('blockchain');
+      setShowSecurityModal(true);
+
+    } catch (error) {
+      console.error('❌ Blockchain verification failed:', error);
+      alert('Blockchain verification failed: ' + error.message);
+    }
+  };
+
+  // Steganography operation
+  const handleSteganographyOperation = async (record) => {
+    try {
+      console.log('🖼️ Preparing steganography extraction...');
+      setSelectedRecord(record);
+      setSecurityOperation('steganography');
+      setShowSecurityModal(true);
+    } catch (error) {
+      console.error('❌ Steganography operation failed:', error);
+      alert('Steganography operation failed: ' + error.message);
+    }
+  };
+
+  // Enhanced view record with security verification
+  const handleViewSecureRecord = async (record) => {
+    setSelectedRecord(record);
+
+    // Verify blockchain integrity if applicable
+    if (record.blockchainHash) {
+      try {
+        const response = await ApiService.verifyRecordIntegrity(record.id);
+        setBlockchainStatus(prev => ({
+          ...prev,
+          [record.id]: response.verification
+        }));
+      } catch (error) {
+        console.error('Blockchain verification failed:', error);
+      }
+    }
+
+    setShowViewModal(true);
+  };
+
+  // Anonymous access
+  const handleAnonymousAccess = () => {
+    setSecurityOperation('anonymous');
+    setShowSecurityModal(true);
+  };
+
+  // Get security badge styling
+  const getSecurityBadge = (record) => {
+    if (record.isAnonymous && record.hasSteganography) {
+      return { className: 'security-badge high-privacy', icon: <Shield size={12} />, text: 'High Privacy' };
+    } else if (record.isAnonymous) {
+      return { className: 'security-badge anonymous', icon: <Eye size={12} />, text: 'Anonymous' };
+    } else if (record.hasSteganography) {
+      return { className: 'security-badge steganographic', icon: <Lock size={12} />, text: 'Steganographic' };
+    } else if (record.blockchainHash) {
+      return { className: 'security-badge blockchain', icon: <Database size={12} />, text: 'Blockchain' };
+    }
+    return { className: 'security-badge standard', icon: <FileText size={12} />, text: 'Standard' };
+  };
+
+  // Existing functions (search, filter, sort, etc.)
   const filteredRecords = useMemo(() => {
     let filtered = records.filter(record => {
       const matchesSearch =
@@ -147,7 +397,6 @@ const ModernMedicalRecordList = () => {
       return matchesSearch && matchesStatus && matchesDate;
     });
 
-    // Apply sorting
     if (sortConfig.key) {
       filtered.sort((a, b) => {
         const aValue = a[sortConfig.key];
@@ -172,7 +421,6 @@ const ModernMedicalRecordList = () => {
     return filtered;
   }, [records, searchQuery, filters, sortConfig]);
 
-  // Handle sorting
   const handleSort = (key) => {
     setSortConfig(prevConfig => ({
       key,
@@ -180,7 +428,6 @@ const ModernMedicalRecordList = () => {
     }));
   };
 
-  // Handle record selection
   const handleSelectRecord = (recordId) => {
     setSelectedRecords(prev =>
       prev.includes(recordId)
@@ -197,20 +444,23 @@ const ModernMedicalRecordList = () => {
     }
   };
 
-  // Modal handlers
   const handleCreateRecord = () => {
     setFormData({
       patient: '',
       diagnosis: '',
       prescriptions: [],
-      images: []
+      images: [],
+      useAnonymousAccess: false,
+      enableSteganography: false,
+      storeOnBlockchain: true,
+      emergencyData: {
+        bloodType: '',
+        allergies: [],
+        emergencyContact: '',
+        criticalMedications: []
+      }
     });
     setShowCreateModal(true);
-  };
-
-  const handleViewRecord = (record) => {
-    setSelectedRecord(record);
-    setShowViewModal(true);
   };
 
   const handleEditRecord = (record) => {
@@ -218,8 +468,21 @@ const ModernMedicalRecordList = () => {
     setFormData({
       patient: record.patientName,
       diagnosis: record.diagnosis,
-      prescriptions: record.prescriptions.map(p => ({ medicine: { label: p, value: p.toLowerCase() } })),
-      images: record.images.map(img => ({ src: img, description: '' }))
+      prescriptions: record.prescriptions.map(p => ({
+        medicine: { label: p.split(' ')[0], value: p.split(' ')[0].toLowerCase() },
+        quantity: p.split(' ')[1] || '',
+        instruction: p.split(' - ')[1] || ''
+      })),
+      images: record.images.map(img => ({ src: img, description: '' })),
+      useAnonymousAccess: record.isAnonymous,
+      enableSteganography: record.hasSteganography,
+      storeOnBlockchain: !!record.blockchainHash,
+      emergencyData: {
+        bloodType: '',
+        allergies: [],
+        emergencyContact: '',
+        criticalMedications: []
+      }
     });
     setShowEditModal(true);
   };
@@ -239,14 +502,25 @@ const ModernMedicalRecordList = () => {
     }
   };
 
-  // Form handlers
   const handleFormChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    if (field.startsWith('emergencyData.')) {
+      const emergencyField = field.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        emergencyData: {
+          ...prev.emergencyData,
+          [emergencyField]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
   };
 
+  // Prescription handling
   const resetPrescriptionForm = () => {
     setSelectedMedicine(null);
     setQuantity('');
@@ -306,6 +580,7 @@ const ModernMedicalRecordList = () => {
     setFormData(prev => ({ ...prev, prescriptions: updatedPrescriptions }));
   };
 
+  // Image handling
   const handleAddImages = () => {
     setFileList([]);
     setShowImageModal(true);
@@ -340,58 +615,6 @@ const ModernMedicalRecordList = () => {
     setFormData(prev => ({ ...prev, images: updatedImages }));
   };
 
-  const handleSubmitForm = () => {
-    if (!formData.patient || !formData.diagnosis) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    const newRecord = {
-      id: `MR${String(records.length + 1).padStart(3, '0')}`,
-      recordId: `MR${String(records.length + 1).padStart(3, '0')}`,
-      patientName: formData.patient,
-      patientId: `P${Math.floor(Math.random() * 9999)}`,
-      date: new Date().toISOString().split('T')[0],
-      diagnosis: formData.diagnosis,
-      prescriptions: formData.prescriptions.map(p => `${p.medicine.label} ${p.quantity}`),
-      images: formData.images.map(img => img.src),
-      status: 'Pending',
-      doctorName: 'Current Doctor',
-      createdAt: new Date().toISOString().split('T')[0],
-      lastModified: new Date().toISOString().split('T')[0]
-    };
-
-    if (showEditModal && selectedRecord) {
-      setRecords(prev => prev.map(record =>
-        record.id === selectedRecord.id ? { ...newRecord, id: selectedRecord.id } : record
-      ));
-      setShowEditModal(false);
-    } else {
-      setRecords(prev => [...prev, newRecord]);
-      setShowCreateModal(false);
-    }
-
-    setSelectedRecord(null);
-  };
-
-  const closeModal = () => {
-    setShowCreateModal(false);
-    setShowEditModal(false);
-    setShowViewModal(false);
-    setShowPrescriptionModal(false);
-    setShowImageModal(false);
-    setSelectedRecord(null);
-    setFormData({
-      patient: '',
-      diagnosis: '',
-      prescriptions: [],
-      images: []
-    });
-    resetPrescriptionForm();
-    setFileList([]);
-  };
-
-  // Get status badge styling
   const getStatusBadge = (status) => {
     const styles = {
       'Pending': 'medical-badge warning',
@@ -410,41 +633,190 @@ const ModernMedicalRecordList = () => {
     }
   };
 
+  const closeModal = () => {
+    setShowCreateModal(false);
+    setShowEditModal(false);
+    setShowViewModal(false);
+    setShowPrescriptionModal(false);
+    setShowImageModal(false);
+    setShowSecurityModal(false);
+    setSelectedRecord(null);
+    setFormData({
+      patient: '',
+      diagnosis: '',
+      prescriptions: [],
+      images: [],
+      useAnonymousAccess: false,
+      enableSteganography: false,
+      storeOnBlockchain: true,
+      emergencyData: {
+        bloodType: '',
+        allergies: [],
+        emergencyContact: '',
+        criticalMedications: []
+      }
+    });
+    resetPrescriptionForm();
+    setFileList([]);
+  };
+
   return (
     <div className="medical-record-container">
-      {/* Header */}
+      {/* Enhanced Header with Security Features */}
       <div className="medical-record-header">
         <div className="medical-record-title-section">
-          <h2>Medical Record Management</h2>
-          <p>Manage patient medical records and prescriptions</p>
+          <h2>🔐 Secure Medical Record Management</h2>
+          <p>Advanced privacy protection with Blockchain, Steganography & Blind Signatures</p>
         </div>
         <div className="medical-record-actions">
+          <button className="medical-btn secondary" onClick={handleAnonymousAccess}>
+            <Shield size={16} />
+            Anonymous Access
+          </button>
           <button className="medical-btn secondary" onClick={() => window.location.reload()}>
             <RefreshCw size={16} />
             Refresh
           </button>
-          <button className="medical-btn secondary">
-            <Download size={16} />
-            Export
-          </button>
           <button className="medical-btn primary" onClick={handleCreateRecord}>
             <Plus size={16} />
-            Add Record
+            Add Secure Record
           </button>
         </div>
       </div>
 
-      {/* Create/Edit Modal */}
+      {/* Security Status Cards */}
+      <div className="medical-stats">
+        <div className="medical-stat-card total">
+          <div className="medical-stat-icon">
+            <FileText size={24} />
+          </div>
+          <div className="medical-stat-content">
+            <h3>{records.length}</h3>
+            <p>Total Records</p>
+          </div>
+        </div>
+        <div className="medical-stat-card anonymous">
+          <div className="medical-stat-icon">
+            <Shield size={24} />
+          </div>
+          <div className="medical-stat-content">
+            <h3>{records.filter(r => r.isAnonymous).length}</h3>
+            <p>Anonymous</p>
+          </div>
+        </div>
+        <div className="medical-stat-card steganographic">
+          <div className="medical-stat-icon">
+            <Lock size={24} />
+          </div>
+          <div className="medical-stat-content">
+            <h3>{records.filter(r => r.hasSteganography).length}</h3>
+            <p>Steganographic</p>
+          </div>
+        </div>
+        <div className="medical-stat-card blockchain">
+          <div className="medical-stat-icon">
+            <Database size={24} />
+          </div>
+          <div className="medical-stat-content">
+            <h3>{records.filter(r => r.blockchainHash).length}</h3>
+            <p>On Blockchain</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Enhanced Create/Edit Modal with Security Options */}
       {(showCreateModal || showEditModal) && (
         <>
           <div className="medical-modal-backdrop" onClick={closeModal}></div>
           <div className="medical-modal large">
             <div className="medical-modal-header">
-              <h3>{showEditModal ? 'Edit Medical Record' : 'Create Medical Record'}</h3>
+              <h3>{showEditModal ? 'Edit Medical Record' : 'Create Secure Medical Record'}</h3>
               <button className="medical-modal-close" onClick={closeModal}>×</button>
             </div>
             <div className="medical-modal-content">
               <div className="medical-form">
+                {/* Security Options Panel */}
+                <div className="security-options-panel">
+                  <h4>🔐 Security & Privacy Options</h4>
+                  <div className="security-toggles">
+                    <label className="security-toggle">
+                      <input
+                        type="checkbox"
+                        checked={formData.useAnonymousAccess}
+                        onChange={(e) => handleFormChange('useAnonymousAccess', e.target.checked)}
+                      />
+                      <span className="toggle-text">
+                        <Shield size={16} />
+                        Anonymous Access (Blind Signatures)
+                      </span>
+                      <small>Patient identity will be protected using cryptographic blind signatures</small>
+                    </label>
+                    <label className="security-toggle">
+                      <input
+                        type="checkbox"
+                        checked={formData.enableSteganography}
+                        onChange={(e) => handleFormChange('enableSteganography', e.target.checked)}
+                      />
+                      <span className="toggle-text">
+                        <Lock size={16} />
+                        Hide Emergency Data in Images
+                      </span>
+                      <small>Emergency information will be hidden within uploaded medical images</small>
+                    </label>
+                    <label className="security-toggle">
+                      <input
+                        type="checkbox"
+                        checked={formData.storeOnBlockchain}
+                        onChange={(e) => handleFormChange('storeOnBlockchain', e.target.checked)}
+                      />
+                      <span className="toggle-text">
+                        <Database size={16} />
+                        Store on Blockchain (Immutable)
+                      </span>
+                      <small>Record will be stored on blockchain for tamper-proof verification</small>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Emergency Data Section (for Steganography) */}
+                {formData.enableSteganography && (
+                  <div className="emergency-data-section">
+                    <h4>🚨 Emergency Data (Hidden in Images)</h4>
+                    <p className="emergency-note">This critical information will be invisibly embedded in your medical images</p>
+                    <div className="medical-form-row">
+                      <div className="medical-form-group">
+                        <label>Blood Type</label>
+                        <select
+                          value={formData.emergencyData.bloodType}
+                          onChange={(e) => handleFormChange('emergencyData.bloodType', e.target.value)}
+                          className="medical-form-select"
+                        >
+                          <option value="">Select Blood Type</option>
+                          <option value="A+">A+</option>
+                          <option value="A-">A-</option>
+                          <option value="B+">B+</option>
+                          <option value="B-">B-</option>
+                          <option value="AB+">AB+</option>
+                          <option value="AB-">AB-</option>
+                          <option value="O+">O+</option>
+                          <option value="O-">O-</option>
+                        </select>
+                      </div>
+                      <div className="medical-form-group">
+                        <label>Emergency Contact</label>
+                        <input
+                          type="text"
+                          value={formData.emergencyData.emergencyContact}
+                          onChange={(e) => handleFormChange('emergencyData.emergencyContact', e.target.value)}
+                          placeholder="Emergency contact number"
+                          className="medical-form-input"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Basic form fields */}
                 <div className="medical-form-row">
                   <div className="medical-form-group">
                     <label>Patient *</label>
@@ -452,12 +824,16 @@ const ModernMedicalRecordList = () => {
                       value={formData.patient}
                       onChange={(e) => handleFormChange('patient', e.target.value)}
                       className="medical-form-select"
+                      disabled={formData.useAnonymousAccess}
                     >
                       <option value="">-- Select Patient --</option>
                       {patientOptions.map(option => (
                         <option key={option.value} value={option.label}>{option.label}</option>
                       ))}
                     </select>
+                    {formData.useAnonymousAccess && (
+                      <small className="form-note">Patient selection disabled for anonymous access</small>
+                    )}
                   </div>
                 </div>
 
@@ -467,7 +843,7 @@ const ModernMedicalRecordList = () => {
                     <textarea
                       value={formData.diagnosis}
                       onChange={(e) => handleFormChange('diagnosis', e.target.value)}
-                      placeholder="Enter diagnosis"
+                      placeholder="Enter diagnosis and treatment details"
                       className="medical-form-textarea"
                       rows={4}
                     />
@@ -481,6 +857,7 @@ const ModernMedicalRecordList = () => {
                       {formData.prescriptions.map((prescription, index) => (
                         <div key={index} className="prescription-tag" onClick={() => handleEditPrescription(index)}>
                           <span>{prescription.medicine?.label || prescription.medicine || 'Unknown Medicine'} - {prescription.quantity}</span>
+                          {prescription.instruction && <small>{prescription.instruction}</small>}
                           <button
                             type="button"
                             className="prescription-remove"
@@ -507,7 +884,7 @@ const ModernMedicalRecordList = () => {
 
                 <div className="medical-form-row">
                   <div className="medical-form-group">
-                    <label>Medical Images</label>
+                    <label>Medical Images {formData.enableSteganography && <span className="steg-note">(Emergency data will be hidden here)</span>}</label>
                     <div className="image-upload-section">
                       <button
                         type="button"
@@ -522,6 +899,9 @@ const ModernMedicalRecordList = () => {
                           {formData.images.map((image, index) => (
                             <div key={index} className="image-item">
                               <img src={image.src} alt={`Medical ${index + 1}`} />
+                              {formData.enableSteganography && (
+                                <div className="steg-indicator">🔒 Steganography Enabled</div>
+                              )}
                               <button
                                 type="button"
                                 className="image-remove"
@@ -532,7 +912,7 @@ const ModernMedicalRecordList = () => {
                               <textarea
                                 value={image.description}
                                 onChange={(e) => updateImageDescription(index, e.target.value)}
-                                placeholder="Description"
+                                placeholder="Image description"
                                 className="image-description"
                                 rows={2}
                               />
@@ -549,8 +929,22 @@ const ModernMedicalRecordList = () => {
               <button className="medical-btn secondary" onClick={closeModal}>
                 Cancel
               </button>
-              <button className="medical-btn primary" onClick={handleSubmitForm}>
-                {showEditModal ? 'Update Record' : 'Create Record'}
+              <button
+                className="medical-btn primary"
+                onClick={handleSecureSubmitForm}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw size={16} className="spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Shield size={16} />
+                    {showEditModal ? 'Update Secure Record' : 'Create Secure Record'}
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -691,8 +1085,11 @@ const ModernMedicalRecordList = () => {
                 />
                 <label htmlFor="file-upload" className="file-upload-label">
                   <Plus size={24} />
-                  <span>Click to upload images</span>
+                  <span>Click to upload medical images</span>
                   <small>PNG, JPG, GIF up to 10MB each (Multiple files supported)</small>
+                  {formData.enableSteganography && (
+                    <small className="steg-warning">🔒 Emergency data will be hidden in these images</small>
+                  )}
                 </label>
               </div>
               {fileList.length > 0 && (
@@ -730,13 +1127,155 @@ const ModernMedicalRecordList = () => {
         </>
       )}
 
-      {/* View Modal */}
+      {/* Security Operations Modal */}
+      {showSecurityModal && (
+        <>
+          <div className="medical-modal-backdrop" onClick={() => setShowSecurityModal(false)}></div>
+          <div className="medical-modal medium">
+            <div className="medical-modal-header">
+              <h3>
+                {securityOperation === 'anonymous' && '🔐 Anonymous Access'}
+                {securityOperation === 'steganography' && '🖼️ Hidden Data Extraction'}
+                {securityOperation === 'blockchain' && '⛓️ Blockchain Verification'}
+                {securityOperation === 'summary' && '✅ Security Summary'}
+              </h3>
+              <button className="medical-modal-close" onClick={() => setShowSecurityModal(false)}>×</button>
+            </div>
+            <div className="medical-modal-content">
+              {securityOperation === 'summary' && anonymousRecordData && (
+                <div className="security-summary">
+                  <h4>🎉 Secure Medical Record Created Successfully!</h4>
+                  <div className="security-features">
+                    <div className={`security-feature ${anonymousRecordData.isAnonymous ? 'enabled' : 'disabled'}`}>
+                      <Shield size={20} />
+                      <div className="feature-info">
+                        <span>Anonymous Access: {anonymousRecordData.isAnonymous ? 'Enabled' : 'Disabled'}</span>
+                        {anonymousRecordData.isAnonymous && (
+                          <small>Patient identity protected with blind signatures</small>
+                        )}
+                      </div>
+                    </div>
+                    <div className={`security-feature ${anonymousRecordData.hasSteganography ? 'enabled' : 'disabled'}`}>
+                      <Lock size={20} />
+                      <div className="feature-info">
+                        <span>Steganography: {anonymousRecordData.hasSteganography ? 'Enabled' : 'Disabled'}</span>
+                        {anonymousRecordData.hasSteganography && (
+                          <small>Emergency data hidden in medical images</small>
+                        )}
+                      </div>
+                    </div>
+                    <div className={`security-feature ${anonymousRecordData.blockchainHash ? 'enabled' : 'disabled'}`}>
+                      <Database size={20} />
+                      <div className="feature-info">
+                        <span>Blockchain Storage: {anonymousRecordData.blockchainHash ? 'Enabled' : 'Disabled'}</span>
+                        {anonymousRecordData.blockchainHash && (
+                          <small>Record stored on blockchain for tamper-proof verification</small>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="security-level">
+                    <strong>🛡️ Security Level: {anonymousRecordData.securityLevel}</strong>
+                  </div>
+                  {anonymousRecordData.blockchainHash && (
+                    <div className="blockchain-info">
+                      <p><strong>Blockchain Hash:</strong> <code>{anonymousRecordData.blockchainHash}</code></p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {securityOperation === 'blockchain' && selectedRecord && (
+                <div className="blockchain-verification">
+                  <h4>⛓️ Blockchain Verification Results</h4>
+                  {blockchainStatus[selectedRecord.id] ? (
+                    <div className="verification-result">
+                      <div className={`verification-status ${blockchainStatus[selectedRecord.id].isValid ? 'valid' : 'invalid'}`}>
+                        {blockchainStatus[selectedRecord.id].isValid ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                        <span>{blockchainStatus[selectedRecord.id].isValid ? 'Record Verified ✅' : 'Verification Failed ❌'}</span>
+                      </div>
+                      <div className="verification-details">
+                        <p><strong>Blockchain Hash:</strong> <code>{selectedRecord.blockchainHash}</code></p>
+                        <p><strong>Block Height:</strong> {blockchainStatus[selectedRecord.id].blockHeight}</p>
+                        <p><strong>Status:</strong> {blockchainStatus[selectedRecord.id].isValid ? 'Integrity Confirmed' : 'Possible Tampering Detected'}</p>
+                        <p><strong>Last Verified:</strong> {new Date(blockchainStatus[selectedRecord.id].lastModified).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="verification-loading">
+                      <RefreshCw size={20} className="spin" />
+                      <span>Verifying record integrity on blockchain...</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {securityOperation === 'steganography' && selectedRecord && (
+                <div className="steganography-extraction">
+                  <h4>🖼️ Steganographic Data Extraction</h4>
+                  <p>This record contains hidden emergency data embedded in medical images.</p>
+                  <div className="extraction-info">
+                    <div className="extraction-step">
+                      <Lock size={16} />
+                      <span>Extraction Key: <code>steg_key_{selectedRecord.id}</code></span>
+                    </div>
+                    <div className="extraction-step">
+                      <Key size={16} />
+                      <span>Hidden Data: Emergency contact, blood type, critical medications</span>
+                    </div>
+                  </div>
+                  <button className="medical-btn primary">
+                    <Download size={16} />
+                    Extract Hidden Data
+                  </button>
+                </div>
+              )}
+
+              {securityOperation === 'anonymous' && (
+                <div className="anonymous-access">
+                  <h4>🔐 Anonymous Access System</h4>
+                  <p>Our system uses cryptographic blind signatures to ensure complete patient anonymity while maintaining medical record integrity.</p>
+                  <div className="anonymous-features">
+                    <div className="anonymous-feature">
+                      <Shield size={16} />
+                      <span>Zero-knowledge patient identification</span>
+                    </div>
+                    <div className="anonymous-feature">
+                      <Key size={16} />
+                      <span>Cryptographic blind signatures</span>
+                    </div>
+                    <div className="anonymous-feature">
+                      <Lock size={16} />
+                      <span>Untraceable medical consultations</span>
+                    </div>
+                  </div>
+                  <button className="medical-btn primary" onClick={handleCreateRecord}>
+                    <Plus size={16} />
+                    Create Anonymous Record
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="medical-modal-actions">
+              <button className="medical-btn secondary" onClick={() => setShowSecurityModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* View Modal with Security Info */}
       {showViewModal && selectedRecord && (
         <>
           <div className="medical-modal-backdrop" onClick={() => setShowViewModal(false)}></div>
           <div className="medical-modal large">
             <div className="medical-modal-header">
               <h3>Medical Record Details - {selectedRecord.recordId}</h3>
+              <div className="security-level-badge">
+                {getSecurityBadge(selectedRecord).icon}
+                {selectedRecord.securityLevel || 'Standard'}
+              </div>
               <button className="medical-modal-close" onClick={() => setShowViewModal(false)}>×</button>
             </div>
             <div className="medical-modal-content">
@@ -765,6 +1304,13 @@ const ModernMedicalRecordList = () => {
                       {selectedRecord.status}
                     </span>
                   </div>
+                  <div className="info-item">
+                    <label>Security Level:</label>
+                    <span className={getSecurityBadge(selectedRecord).className}>
+                      {getSecurityBadge(selectedRecord).icon}
+                      {selectedRecord.securityLevel || 'Standard'}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="diagnosis-section">
@@ -790,8 +1336,40 @@ const ModernMedicalRecordList = () => {
                     <label>Medical Images:</label>
                     <div className="image-gallery">
                       {selectedRecord.images.map((image, index) => (
-                        <img key={index} src={image} alt={`Medical ${index + 1}`} className="gallery-image" />
+                        <div key={index} className="gallery-image-container">
+                          <img src={image} alt={`Medical ${index + 1}`} className="gallery-image" />
+                          {selectedRecord.hasSteganography && (
+                            <div className="steg-overlay">🔒 Contains Hidden Data</div>
+                          )}
+                        </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Security Information */}
+                {(selectedRecord.blockchainHash || selectedRecord.isAnonymous || selectedRecord.hasSteganography) && (
+                  <div className="security-info-section">
+                    <label>Security Information:</label>
+                    <div className="security-details">
+                      {selectedRecord.blockchainHash && (
+                        <div className="security-detail">
+                          <Database size={16} />
+                          <span>Blockchain Hash: <code>{selectedRecord.blockchainHash}</code></span>
+                        </div>
+                      )}
+                      {selectedRecord.isAnonymous && (
+                        <div className="security-detail">
+                          <Shield size={16} />
+                          <span>Anonymous access enabled with blind signatures</span>
+                        </div>
+                      )}
+                      {selectedRecord.hasSteganography && (
+                        <div className="security-detail">
+                          <Lock size={16} />
+                          <span>Emergency data hidden in medical images</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -805,46 +1383,6 @@ const ModernMedicalRecordList = () => {
           </div>
         </>
       )}
-
-      {/* Stats Cards */}
-      <div className="medical-stats">
-        <div className="medical-stat-card total">
-          <div className="medical-stat-icon">
-            <FileText size={24} />
-          </div>
-          <div className="medical-stat-content">
-            <h3>{records.length}</h3>
-            <p>Total Records</p>
-          </div>
-        </div>
-        <div className="medical-stat-card pending">
-          <div className="medical-stat-icon">
-            <Clock size={24} />
-          </div>
-          <div className="medical-stat-content">
-            <h3>{records.filter(r => r.status === 'Pending').length}</h3>
-            <p>Pending</p>
-          </div>
-        </div>
-        <div className="medical-stat-card completed">
-          <div className="medical-stat-icon">
-            <CheckCircle size={24} />
-          </div>
-          <div className="medical-stat-content">
-            <h3>{records.filter(r => r.status === 'Completed').length}</h3>
-            <p>Completed</p>
-          </div>
-        </div>
-        <div className="medical-stat-card today">
-          <div className="medical-stat-icon">
-            <AlertCircle size={24} />
-          </div>
-          <div className="medical-stat-content">
-            <h3>{records.filter(r => r.date === new Date().toISOString().split('T')[0]).length}</h3>
-            <p>Today's Records</p>
-          </div>
-        </div>
-      </div>
 
       {/* Search and Filters */}
       <div className="medical-controls">
@@ -921,7 +1459,7 @@ const ModernMedicalRecordList = () => {
         )}
       </div>
 
-      {/* Records Table */}
+      {/* Enhanced Records Table with Security Indicators */}
       <div className="medical-table-container">
         <div className="medical-table-wrapper">
           <table className="medical-table">
@@ -943,104 +1481,112 @@ const ModernMedicalRecordList = () => {
                 </th>
                 <th className="medical-th sortable" onClick={() => handleSort('patientName')}>
                   Patient Name
-                  {sortConfig.key === 'patientName' && (
-                    sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-                  )}
                 </th>
                 <th className="medical-th sortable" onClick={() => handleSort('date')}>
                   Date
-                  {sortConfig.key === 'date' && (
-                    sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-                  )}
                 </th>
                 <th className="medical-th">Diagnosis</th>
-                <th className="medical-th">Images</th>
+                <th className="medical-th">Security Level</th>
                 <th className="medical-th">Status</th>
-                <th className="medical-th">Doctor</th>
-                <th className="medical-th actions">Actions</th>
+                <th className="medical-th">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredRecords.map(record => (
-                <tr key={record.id} className={selectedRecords.includes(record.id) ? 'selected' : ''}>
-                  <td className="medical-td checkbox">
-                    <input
-                      type="checkbox"
-                      checked={selectedRecords.includes(record.id)}
-                      onChange={() => handleSelectRecord(record.id)}
-                      className="medical-checkbox"
-                    />
-                  </td>
-                  <td className="medical-td">
-                    <span className="medical-record-id">{record.recordId}</span>
-                  </td>
-                  <td className="medical-td">
-                    <div className="patient-cell">
-                      <div className="patient-avatar">
-                        {record.patientName.charAt(0).toUpperCase()}
+              {filteredRecords.map(record => {
+                const securityBadge = getSecurityBadge(record);
+                return (
+                  <tr key={record.id} className={selectedRecords.includes(record.id) ? 'selected' : ''}>
+                    <td className="medical-td checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedRecords.includes(record.id)}
+                        onChange={() => handleSelectRecord(record.id)}
+                        className="medical-checkbox"
+                      />
+                    </td>
+                    <td className="medical-td">
+                      <span className="medical-record-id">{record.recordId}</span>
+                    </td>
+                    <td className="medical-td">
+                      <div className="patient-cell">
+                        <div className="patient-avatar">
+                          {record.isAnonymous ? '🔒' : record.patientName.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="patient-info">
+                          <div className="patient-name">{record.patientName}</div>
+                          <div className="patient-id">{record.patientId}</div>
+                        </div>
                       </div>
-                      <div className="patient-info">
-                        <div className="patient-name">{record.patientName}</div>
-                        <div className="patient-id">{record.patientId}</div>
+                    </td>
+                    <td className="medical-td">
+                      <span className="medical-date">{new Date(record.date).toLocaleDateString()}</span>
+                    </td>
+                    <td className="medical-td">
+                      <div className="diagnosis-cell" title={record.diagnosis}>
+                        {record.diagnosis.length > 50 ?
+                          `${record.diagnosis.substring(0, 50)}...` :
+                          record.diagnosis
+                        }
                       </div>
-                    </div>
-                  </td>
-                  <td className="medical-td">
-                    <span className="medical-date">{new Date(record.date).toLocaleDateString()}</span>
-                  </td>
-                  <td className="medical-td">
-                    <div className="diagnosis-cell" title={record.diagnosis}>
-                      {record.diagnosis.length > 50 ?
-                        `${record.diagnosis.substring(0, 50)}...` :
-                        record.diagnosis
-                      }
-                    </div>
-                  </td>
-                  <td className="medical-td">
-                    <div className="image-count">
-                      {record.images.length > 0 ? (
-                        <span className="has-images">{record.images.length} image{record.images.length > 1 ? 's' : ''}</span>
-                      ) : (
-                        <span className="no-images">No images</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="medical-td">
-                    <div className={getStatusBadge(record.status)}>
-                      {getStatusIcon(record.status)}
-                      <span>{record.status}</span>
-                    </div>
-                  </td>
-                  <td className="medical-td">
-                    <span className="doctor-name">{record.doctorName}</span>
-                  </td>
-                  <td className="medical-td actions">
-                    <div className="medical-action-buttons">
-                      <button
-                        className="medical-action-btn view"
-                        title="View Record"
-                        onClick={() => handleViewRecord(record)}
-                      >
-                        <Eye size={14} />
-                      </button>
-                      <button
-                        className="medical-action-btn edit"
-                        title="Edit Record"
-                        onClick={() => handleEditRecord(record)}
-                      >
-                        <Edit3 size={14} />
-                      </button>
-                      <button
-                        className="medical-action-btn delete"
-                        title="Delete Record"
-                        onClick={() => handleDeleteRecord(record.id)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="medical-td">
+                      <div className={securityBadge.className}>
+                        {securityBadge.icon}
+                        <span>{securityBadge.text}</span>
+                      </div>
+                    </td>
+                    <td className="medical-td">
+                      <div className={getStatusBadge(record.status)}>
+                        {getStatusIcon(record.status)}
+                        <span>{record.status}</span>
+                      </div>
+                    </td>
+                    <td className="medical-td actions">
+                      <div className="medical-action-buttons">
+                        <button
+                          className="medical-action-btn view"
+                          title="View Record"
+                          onClick={() => handleViewSecureRecord(record)}
+                        >
+                          <Eye size={14} />
+                        </button>
+                        {record.hasSteganography && (
+                          <button
+                            className="medical-action-btn steganography"
+                            title="Extract Hidden Data"
+                            onClick={() => handleSteganographyOperation(record)}
+                          >
+                            <Lock size={14} />
+                          </button>
+                        )}
+                        {record.blockchainHash && (
+                          <button
+                            className="medical-action-btn blockchain"
+                            title="Verify on Blockchain"
+                            onClick={() => handleBlockchainVerification(record)}
+                          >
+                            <Database size={14} />
+                          </button>
+                        )}
+                        <button
+                          className="medical-action-btn edit"
+                          title="Edit Record"
+                          onClick={() => handleEditRecord(record)}
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                        <button
+                          className="medical-action-btn delete"
+                          title="Delete Record"
+                          onClick={() => handleDeleteRecord(record.id)}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 
@@ -1053,7 +1599,6 @@ const ModernMedicalRecordList = () => {
           )}
         </div>
 
-        {/* Table Footer */}
         <div className="medical-table-footer">
           <div className="medical-table-info">
             Showing {filteredRecords.length} of {records.length} records
@@ -1065,7 +1610,8 @@ const ModernMedicalRecordList = () => {
         .medical-record-container {
           padding: 24px 32px;
           min-height: 100vh;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
         .medical-record-header {
@@ -1078,13 +1624,14 @@ const ModernMedicalRecordList = () => {
         .medical-record-title-section h2 {
           margin: 0 0 8px 0;
           font-size: 28px;
-          font-weight: 600;
-          color: #1e293b;
+          font-weight: 700;
+          color: white;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .medical-record-title-section p {
           margin: 0;
-          color: #64748b;
+          color: rgba(255,255,255,0.9);
           font-size: 16px;
         }
 
@@ -1112,33 +1659,33 @@ const ModernMedicalRecordList = () => {
         }
 
         .medical-btn.primary {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
+          background: rgba(255, 255, 255, 0.95);
+          color: #667eea;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.1);
         }
 
-        .medical-btn.primary:hover {
+        .medical-btn.primary:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.15);
         }
 
         .medical-btn.primary:disabled {
-          opacity: 0.6;
+          opacity: 0.7;
           cursor: not-allowed;
           transform: none;
         }
 
         .medical-btn.secondary {
-          background: rgba(255, 255, 255, 0.9);
-          color: #64748b;
-          border: 1px solid rgba(226, 232, 240, 0.8);
+          background: rgba(255, 255, 255, 0.2);
+          color: white;
+          border: 1px solid rgba(255, 255, 255, 0.3);
           backdrop-filter: blur(10px);
         }
 
         .medical-btn.secondary:hover,
         .medical-btn.secondary.active {
-          background: rgba(255, 255, 255, 1);
-          border-color: #667eea;
-          color: #667eea;
+          background: rgba(255, 255, 255, 0.3);
+          border-color: rgba(255, 255, 255, 0.5);
         }
 
         .medical-btn.danger {
@@ -1159,19 +1706,21 @@ const ModernMedicalRecordList = () => {
         }
 
         .medical-stat-card {
-          background: rgba(255, 255, 255, 0.9);
+          background: rgba(255, 255, 255, 0.95);
           backdrop-filter: blur(20px);
-          border: 1px solid rgba(226, 232, 240, 0.8);
+          border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 16px;
           padding: 24px;
           display: flex;
           align-items: center;
           gap: 16px;
-          transition: transform 0.2s ease;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.1);
         }
 
         .medical-stat-card:hover {
-          transform: translateY(-2px);
+          transform: translateY(-4px);
+          box-shadow: 0 8px 25px rgba(0,0,0,0.15);
         }
 
         .medical-stat-icon {
@@ -1188,16 +1737,16 @@ const ModernMedicalRecordList = () => {
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
 
-        .medical-stat-card.pending .medical-stat-icon {
-          background: linear-gradient(135deg, #faad14 0%, #f59e0b 100%);
-        }
-
-        .medical-stat-card.completed .medical-stat-icon {
-          background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
-        }
-
-        .medical-stat-card.today .medical-stat-icon {
+        .medical-stat-card.anonymous .medical-stat-icon {
           background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+        }
+
+        .medical-stat-card.steganographic .medical-stat-icon {
+          background: linear-gradient(135deg, #f59e0b 0%, #faad14 100%);
+        }
+
+        .medical-stat-card.blockchain .medical-stat-icon {
+          background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
         }
 
         .medical-stat-content h3 {
@@ -1214,15 +1763,16 @@ const ModernMedicalRecordList = () => {
         }
 
         .medical-controls {
-          background: rgba(255, 255, 255, 0.9);
+          background: rgba(255, 255, 255, 0.95);
           backdrop-filter: blur(20px);
-          border: 1px solid rgba(226, 232, 240, 0.8);
+          border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 16px;
           padding: 24px;
           margin-bottom: 24px;
           display: flex;
           flex-direction: column;
           gap: 16px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.1);
         }
 
         .medical-search-section {
@@ -1317,11 +1867,12 @@ const ModernMedicalRecordList = () => {
         }
 
         .medical-table-container {
-          background: rgba(255, 255, 255, 0.9);
+          background: rgba(255, 255, 255, 0.95);
           backdrop-filter: blur(20px);
-          border: 1px solid rgba(226, 232, 240, 0.8);
+          border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 16px;
           overflow: hidden;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.1);
         }
 
         .medical-table-wrapper {
@@ -1371,7 +1922,7 @@ const ModernMedicalRecordList = () => {
         }
 
         .medical-th.actions {
-          width: 120px;
+          width: 160px;
           text-align: center;
         }
 
@@ -1468,19 +2019,40 @@ const ModernMedicalRecordList = () => {
           color: #374151;
         }
 
-        .image-count .has-images {
-          background: rgba(34, 197, 94, 0.1);
-          color: #16a34a;
+        .security-badge {
+          display: flex;
+          align-items: center;
+          gap: 4px;
           padding: 4px 8px;
           border-radius: 6px;
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 500;
+          text-transform: capitalize;
         }
 
-        .image-count .no-images {
+        .security-badge.high-privacy {
+          background: linear-gradient(135deg, #8b5cf6, #a855f7);
+          color: white;
+        }
+
+        .security-badge.anonymous {
+          background: rgba(139, 92, 246, 0.1);
+          color: #8b5cf6;
+        }
+
+        .security-badge.steganographic {
+          background: rgba(245, 158, 11, 0.1);
+          color: #f59e0b;
+        }
+
+        .security-badge.blockchain {
+          background: rgba(34, 197, 94, 0.1);
+          color: #16a34a;
+        }
+
+        .security-badge.standard {
+          background: rgba(148, 163, 184, 0.1);
           color: #94a3b8;
-          font-size: 12px;
-          font-style: italic;
         }
 
         .medical-badge {
@@ -1514,11 +2086,6 @@ const ModernMedicalRecordList = () => {
           color: #94a3b8;
         }
 
-        .doctor-name {
-          color: #64748b;
-          font-size: 13px;
-        }
-
         .medical-action-buttons {
           display: flex;
           gap: 4px;
@@ -1548,14 +2115,34 @@ const ModernMedicalRecordList = () => {
           border-color: #3b82f6;
         }
 
-        .medical-action-btn.edit {
+        .medical-action-btn.steganography {
+          color: #f59e0b;
+        }
+
+        .medical-action-btn.steganography:hover {
+          background: #f59e0b;
+          color: white;
+          border-color: #f59e0b;
+        }
+
+        .medical-action-btn.blockchain {
           color: #16a34a;
         }
 
-        .medical-action-btn.edit:hover {
+        .medical-action-btn.blockchain:hover {
           background: #16a34a;
           color: white;
           border-color: #16a34a;
+        }
+
+        .medical-action-btn.edit {
+          color: #8b5cf6;
+        }
+
+        .medical-action-btn.edit:hover {
+          background: #8b5cf6;
+          color: white;
+          border-color: #8b5cf6;
         }
 
         .medical-action-btn.delete {
@@ -1649,6 +2236,18 @@ const ModernMedicalRecordList = () => {
           color: #1e293b;
         }
 
+        .security-level-badge {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border-radius: 8px;
+          background: rgba(102, 126, 234, 0.1);
+          color: #667eea;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
         .medical-modal-close {
           background: none;
           border: none;
@@ -1675,6 +2274,82 @@ const ModernMedicalRecordList = () => {
           padding: 24px 32px;
           border-top: 1px solid rgba(226, 232, 240, 0.6);
           background: rgba(248, 250, 252, 0.5);
+        }
+
+        /* Security Options Panel */
+        .security-options-panel {
+          background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+          border: 1px solid rgba(102, 126, 234, 0.2);
+          border-radius: 12px;
+          padding: 20px;
+          margin-bottom: 20px;
+        }
+
+        .security-options-panel h4 {
+          margin: 0 0 16px 0;
+          color: #667eea;
+          font-size: 16px;
+          font-weight: 600;
+        }
+
+        .security-toggles {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .security-toggle {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          cursor: pointer;
+          padding: 12px;
+          border-radius: 8px;
+          transition: background 0.2s ease;
+        }
+
+        .security-toggle:hover {
+          background: rgba(102, 126, 234, 0.05);
+        }
+
+        .security-toggle input[type="checkbox"] {
+          margin-right: 12px;
+        }
+
+        .toggle-text {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-weight: 500;
+          color: #374151;
+        }
+
+        .security-toggle small {
+          color: #64748b;
+          font-size: 12px;
+          margin-left: 28px;
+        }
+
+        .emergency-data-section {
+          background: rgba(239, 68, 68, 0.05);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          border-radius: 12px;
+          padding: 20px;
+          margin-bottom: 20px;
+        }
+
+        .emergency-data-section h4 {
+          margin: 0 0 8px 0;
+          color: #ef4444;
+          font-size: 16px;
+          font-weight: 600;
+        }
+
+        .emergency-note {
+          margin: 0 0 16px 0;
+          color: #64748b;
+          font-size: 14px;
+          font-style: italic;
         }
 
         /* Form Styles */
@@ -1704,6 +2379,12 @@ const ModernMedicalRecordList = () => {
           font-weight: 500;
           color: #374151;
           font-size: 14px;
+        }
+
+        .form-note {
+          color: #64748b;
+          font-size: 12px;
+          font-style: italic;
         }
 
         .medical-form-input,
@@ -1764,8 +2445,8 @@ const ModernMedicalRecordList = () => {
 
         .prescription-tag {
           display: flex;
-          align-items: center;
-          gap: 8px;
+          flex-direction: column;
+          gap: 4px;
           background: rgba(59, 130, 246, 0.1);
           color: #3b82f6;
           padding: 8px 12px;
@@ -1773,27 +2454,33 @@ const ModernMedicalRecordList = () => {
           cursor: pointer;
           transition: all 0.2s ease;
           border: 1px solid rgba(59, 130, 246, 0.2);
+          position: relative;
         }
 
         .prescription-tag:hover {
           background: rgba(59, 130, 246, 0.2);
         }
 
+        .prescription-tag small {
+          color: #64748b;
+          font-size: 11px;
+        }
+
         .prescription-remove {
-          background: none;
+          position: absolute;
+          top: -6px;
+          right: -6px;
+          background: #ef4444;
+          color: white;
           border: none;
-          color: #ef4444;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
           cursor: pointer;
-          padding: 2px;
           display: flex;
           align-items: center;
           justify-content: center;
-          border-radius: 4px;
-          transition: background 0.2s ease;
-        }
-
-        .prescription-remove:hover {
-          background: rgba(239, 68, 68, 0.1);
+          font-size: 10px;
         }
 
         .prescription-add {
@@ -1837,9 +2524,15 @@ const ModernMedicalRecordList = () => {
           background: rgba(102, 126, 234, 0.2);
         }
 
+        .steg-note {
+          color: #f59e0b;
+          font-size: 11px;
+          font-weight: 400;
+        }
+
         .image-list {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
           gap: 16px;
         }
 
@@ -1856,6 +2549,18 @@ const ModernMedicalRecordList = () => {
           object-fit: cover;
           border-radius: 8px;
           border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .steg-indicator {
+          position: absolute;
+          top: 4px;
+          left: 4px;
+          background: rgba(245, 158, 11, 0.9);
+          color: white;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 10px;
+          font-weight: 500;
         }
 
         .image-remove {
@@ -1914,6 +2619,11 @@ const ModernMedicalRecordList = () => {
           color: #94a3b8;
         }
 
+        .steg-warning {
+          color: #f59e0b !important;
+          font-weight: 500 !important;
+        }
+
         .uploaded-files-preview {
           margin-top: 20px;
         }
@@ -1954,7 +2664,148 @@ const ModernMedicalRecordList = () => {
           max-width: 80px;
         }
 
-        /* View Modal Content */
+        /* Security Summary Styles */
+        .security-summary {
+          text-align: center;
+          padding: 20px;
+        }
+
+        .security-summary h4 {
+          margin: 0 0 24px 0;
+          color: #16a34a;
+          font-size: 18px;
+        }
+
+        .security-features {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .security-feature {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px;
+          border-radius: 12px;
+          border: 1px solid;
+        }
+
+        .security-feature.enabled {
+          background: rgba(22, 163, 74, 0.1);
+          border-color: rgba(22, 163, 74, 0.3);
+          color: #16a34a;
+        }
+
+        .security-feature.disabled {
+          background: rgba(148, 163, 184, 0.1);
+          border-color: rgba(148, 163, 184, 0.3);
+          color: #94a3b8;
+        }
+
+        .feature-info {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          text-align: left;
+        }
+
+        .feature-info small {
+          color: #64748b;
+          font-size: 12px;
+        }
+
+        .security-level {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 16px;
+          border-radius: 12px;
+          margin-bottom: 16px;
+        }
+
+        .blockchain-info {
+          background: rgba(248, 250, 252, 0.8);
+          padding: 16px;
+          border-radius: 12px;
+          text-align: left;
+        }
+
+        .blockchain-info code {
+          background: rgba(0, 0, 0, 0.1);
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-family: monospace;
+          font-size: 12px;
+          word-break: break-all;
+        }
+
+        /* Blockchain Verification Styles */
+        .blockchain-verification h4 {
+          margin: 0 0 20px 0;
+          color: #16a34a;
+          font-size: 18px;
+        }
+
+        .verification-result {
+          text-align: center;
+        }
+
+        .verification-status {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          padding: 20px;
+          border-radius: 12px;
+          margin-bottom: 20px;
+          font-size: 16px;
+          font-weight: 600;
+        }
+
+        .verification-status.valid {
+          background: rgba(22, 163, 74, 0.1);
+          color: #16a34a;
+          border: 1px solid rgba(22, 163, 74, 0.3);
+        }
+
+        .verification-status.invalid {
+          background: rgba(239, 68, 68, 0.1);
+          color: #ef4444;
+          border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .verification-details {
+          background: rgba(248, 250, 252, 0.8);
+          padding: 16px;
+          border-radius: 12px;
+          text-align: left;
+        }
+
+        .verification-details p {
+          margin: 8px 0;
+          font-size: 14px;
+        }
+
+        .verification-loading {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          padding: 40px;
+          color: #64748b;
+        }
+
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        /* View Record Content */
         .view-record-content {
           display: flex;
           flex-direction: column;
@@ -1988,7 +2839,8 @@ const ModernMedicalRecordList = () => {
 
         .diagnosis-section,
         .prescriptions-section,
-        .images-section {
+        .images-section,
+        .security-info-section {
           display: flex;
           flex-direction: column;
           gap: 12px;
@@ -1996,7 +2848,8 @@ const ModernMedicalRecordList = () => {
 
         .diagnosis-section label,
         .prescriptions-section label,
-        .images-section label {
+        .images-section label,
+        .security-info-section label {
           font-weight: 500;
           color: #64748b;
           font-size: 12px;
@@ -2034,12 +2887,132 @@ const ModernMedicalRecordList = () => {
           gap: 16px;
         }
 
+        .gallery-image-container {
+          position: relative;
+        }
+
         .gallery-image {
           width: 100%;
           height: 150px;
           object-fit: cover;
           border-radius: 8px;
           border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .steg-overlay {
+          position: absolute;
+          top: 4px;
+          left: 4px;
+          background: rgba(245, 158, 11, 0.9);
+          color: white;
+          padding: 4px 8px;
+          border-radius: 6px;
+          font-size: 10px;
+          font-weight: 500;
+        }
+
+        .security-details {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          background: rgba(248, 250, 252, 0.8);
+          padding: 16px;
+          border-radius: 12px;
+        }
+
+        .security-detail {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #374151;
+          font-size: 14px;
+        }
+
+        .security-detail code {
+          background: rgba(0, 0, 0, 0.1);
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-family: monospace;
+          font-size: 12px;
+        }
+
+        /* Steganography Extraction */
+        .steganography-extraction {
+          text-align: center;
+          padding: 20px;
+        }
+
+        .steganography-extraction h4 {
+          margin: 0 0 16px 0;
+          color: #f59e0b;
+          font-size: 18px;
+        }
+
+        .steganography-extraction p {
+          margin: 0 0 20px 0;
+          color: #64748b;
+        }
+
+        .extraction-info {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          background: rgba(248, 250, 252, 0.8);
+          padding: 16px;
+          border-radius: 12px;
+          margin-bottom: 20px;
+        }
+
+        .extraction-step {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #374151;
+          font-size: 14px;
+        }
+
+        .extraction-step code {
+          background: rgba(0, 0, 0, 0.1);
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-family: monospace;
+          font-size: 12px;
+        }
+
+        /* Anonymous Access */
+        .anonymous-access {
+          text-align: center;
+          padding: 20px;
+        }
+
+        .anonymous-access h4 {
+          margin: 0 0 16px 0;
+          color: #8b5cf6;
+          font-size: 18px;
+        }
+
+        .anonymous-access p {
+          margin: 0 0 20px 0;
+          color: #64748b;
+          line-height: 1.6;
+        }
+
+        .anonymous-features {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          background: rgba(248, 250, 252, 0.8);
+          padding: 16px;
+          border-radius: 12px;
+          margin-bottom: 20px;
+        }
+
+        .anonymous-feature {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #374151;
+          font-size: 14px;
         }
 
         /* Mobile Responsive */
@@ -2147,10 +3120,20 @@ const ModernMedicalRecordList = () => {
           .image-gallery {
             grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
           }
+
+          .security-features {
+            gap: 12px;
+          }
+
+          .security-feature {
+            flex-direction: column;
+            text-align: center;
+            gap: 8px;
+          }
         }
       `}</style>
     </div>
   );
 };
 
-export default ModernMedicalRecordList;
+export default SecureMedicalRecordManagement;

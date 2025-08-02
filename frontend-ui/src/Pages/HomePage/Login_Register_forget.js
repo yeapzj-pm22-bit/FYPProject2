@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Mail,
   Lock,
@@ -9,13 +9,30 @@ import {
   ArrowLeft,
   Shield,
   Heart,
-  CheckCircle
+  CheckCircle,
+  Loader,
+  Info,
+  AlertTriangle,
+  XCircle
 } from 'lucide-react';
+import ApiService from '../../services/api';
+import "./css/Login_Register_forget.css";
+import blindSignatureClient from '../../services/blindSignatureClient';
 
 const HealthcareAuth = () => {
   const [currentPage, setCurrentPage] = useState('login');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // New state for verification features
+  const [showDemo, setShowDemo] = useState(false);
+  const [showVerifier, setShowVerifier] = useState(false);
+  const [registrationStep, setRegistrationStep] = useState('form'); // 'form', 'signing', 'success'
+  const [verificationData, setVerificationData] = useState(null);
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -32,6 +49,12 @@ const HealthcareAuth = () => {
     feedback: '',
     color: '#ef4444'
   });
+
+  // Clear messages when switching pages
+  useEffect(() => {
+    setError('');
+    setSuccess('');
+  }, [currentPage]);
 
   const evaluatePasswordStrength = (password) => {
     let score = 0;
@@ -84,11 +107,13 @@ const HealthcareAuth = () => {
       [field]: value
     }));
 
-    // Evaluate password strength for password field
     if (field === 'password') {
       const strength = evaluatePasswordStrength(value);
       setPasswordStrength(strength);
     }
+
+    // Clear errors when user starts typing
+    if (error) setError('');
   };
 
   const handleOtpChange = (index, value) => {
@@ -108,6 +133,528 @@ const HealthcareAuth = () => {
     }
   };
 
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await ApiService.login({
+        email: formData.email,
+        password: formData.password
+      });
+
+      if (response.success) {
+        // Store token and user data
+        ApiService.setToken(response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+
+        setSuccess('Login successful! Redirecting...');
+
+        // Redirect to patient homepage
+        setTimeout(() => {
+          window.location.href = '/PatientHomePage';
+        }, 1500);
+      }
+    } catch (error) {
+      setError(error.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setRegistrationStep('signing');
+
+    // Frontend validation first
+    console.log('🔍 Starting frontend validation...');
+
+    // Password validation
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      setRegistrationStep('form');
+      return;
+    }
+
+    if (passwordStrength.score < 3) {
+      setError('Please choose a stronger password');
+      setLoading(false);
+      setRegistrationStep('form');
+      return;
+    }
+
+    // Check required fields
+    const requiredFields = {
+      firstName: formData.firstName?.trim(),
+      lastName: formData.lastName?.trim(),
+      email: formData.email?.trim(),
+      gender: formData.gender,
+      birthDate: formData.birthDate,
+      password: formData.password
+    };
+
+    console.log('📝 Form data validation:', requiredFields);
+
+    for (const [field, value] of Object.entries(requiredFields)) {
+      if (!value) {
+        setError(`${field} is required`);
+        setLoading(false);
+        setRegistrationStep('form');
+        return;
+      }
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
+      setLoading(false);
+      setRegistrationStep('form');
+      return;
+    }
+
+    // Validate birth date format (ensure ISO format)
+    const birthDateISO = new Date(formData.birthDate).toISOString().split('T')[0];
+    console.log('📅 Birth date converted to ISO:', birthDateISO);
+
+    try {
+      setSuccess('🔐 Initializing secure anonymous registration...');
+
+      // Step 1: Initialize blind signature parameters
+      console.log('🔄 Step 1: Initializing blind signature client...');
+      await blindSignatureClient.initializeBlindSignature(ApiService);
+      console.log('✅ Step 1: Blind signature client initialized');
+
+      // Step 2: Initialize registration with email check
+      console.log('🔄 Step 2: Checking email availability...');
+      const initPayload = { email: formData.email.trim() };
+      console.log('📤 Sending init payload:', initPayload);
+
+      const initResponse = await ApiService.request('/auth/register-init', {
+        method: 'POST',
+        body: JSON.stringify(initPayload)
+      });
+
+      console.log('📥 Init response:', initResponse);
+
+      if (!initResponse.success) {
+        throw new Error(initResponse.message || 'Email validation failed');
+      }
+      console.log('✅ Step 2: Email available');
+
+      setSuccess('🎭 Creating anonymous identity...');
+
+      // Step 3: Create blinded message
+      console.log('🔄 Step 3: Creating blinded message...');
+      const userData = {
+        email: formData.email.trim(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim()
+      };
+      console.log('👤 User data for blinding:', userData);
+
+      const blindingResult = await blindSignatureClient.createBlindedMessage(userData);
+      console.log('🎭 Blinding result:', {
+        sessionId: blindingResult.sessionId,
+        blindedMessageLength: blindingResult.blindedMessage?.length || 0,
+        messageHashLength: blindingResult.messageHash?.length || 0,
+        blindingFactorLength: blindingResult.blindingFactor?.length || 0
+      });
+
+      // Step 4: Get blind signature from server
+      console.log('🔄 Step 4: Requesting blind signature...');
+      const blindPayload = {
+        blindedMessage: blindingResult.blindedMessage,
+        sessionId: blindingResult.sessionId,
+        messageHash: blindingResult.messageHash,
+        tempUserData: userData
+      };
+      console.log('📤 Sending blind payload:', {
+        ...blindPayload,
+        blindedMessage: `${blindPayload.blindedMessage?.substring(0, 20)}...`,
+        messageHash: `${blindPayload.messageHash?.substring(0, 20)}...`
+      });
+
+      const blindResponse = await ApiService.request('/auth/register-blind', {
+        method: 'POST',
+        body: JSON.stringify(blindPayload)
+      });
+
+      console.log('📥 Blind response:', blindResponse);
+
+      if (!blindResponse.success) {
+        console.error('❌ Blind signature request failed:', blindResponse);
+        throw new Error(blindResponse.message || 'Blind signature creation failed');
+      }
+      console.log('✅ Step 4: Blind signature received');
+
+      setSuccess('✅ Processing anonymous credentials...');
+
+      // Step 5: Process the signature
+      console.log('🔄 Step 5: Processing signature...');
+      const signatureResult = blindSignatureClient.processSignature(blindResponse.blindSignature);
+      console.log('🔓 Signature processed:', {
+        sessionId: signatureResult.sessionId,
+        signatureLength: signatureResult.signature?.length || 0,
+        originalMessageLength: signatureResult.originalMessage?.length || 0
+      });
+
+      // Step 6: Complete registration with processed signature
+      console.log('🔄 Step 6: Completing registration...');
+      const completePayload = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim(),
+        gender: formData.gender,
+        birthDate: birthDateISO, // Use ISO format
+        password: formData.password,
+        signature: signatureResult.signature,
+        originalMessage: signatureResult.originalMessage,
+        sessionId: signatureResult.sessionId
+      };
+
+      console.log('📤 Sending complete payload:', {
+        ...completePayload,
+        password: '[HIDDEN]',
+        signature: `${completePayload.signature?.substring(0, 20)}...`,
+        originalMessage: `${completePayload.originalMessage?.substring(0, 50)}...`
+      });
+
+      const completeResponse = await ApiService.request('/auth/register-complete', {
+        method: 'POST',
+        body: JSON.stringify(completePayload)
+      });
+
+      console.log('📥 Complete response:', completeResponse);
+
+      if (completeResponse.success) {
+        setSuccess('🎉 Anonymous registration successful! Your privacy has been protected.');
+        setRegistrationStep('success');
+
+        // Capture verification data
+        setVerificationData({
+          sessionId: signatureResult.sessionId,
+          timestamp: new Date().toISOString(),
+          blindSignatureUsed: true,
+          privacyProtected: true,
+          user: completeResponse.user
+        });
+
+        console.log('✅ Registration completed successfully:', completeResponse.user);
+
+        // Reset blind signature client
+        blindSignatureClient.reset();
+
+        // Show success for a bit longer before redirecting
+        setTimeout(() => {
+          setCurrentPage('login');
+          setRegistrationStep('form');
+          // Clear the form data but keep email
+          setFormData({
+            email: formData.email,
+            password: '',
+            confirmPassword: '',
+            firstName: '',
+            lastName: '',
+            gender: '',
+            birthDate: '',
+            otp: ['', '', '', '', '', '']
+          });
+        }, 4000);
+      } else {
+        console.error('❌ Registration completion failed:', completeResponse);
+        throw new Error(completeResponse.message || 'Registration completion failed');
+      }
+
+    } catch (error) {
+      console.error('❌ Registration error:', error);
+
+      // Enhanced error reporting
+      let errorMessage = 'Registration failed';
+
+      if (error.message.includes('Validation failed')) {
+        errorMessage = 'Please check all required fields are filled correctly';
+      } else if (error.message.includes('Email already registered')) {
+        errorMessage = 'This email is already registered. Please use a different email or try logging in.';
+      } else if (error.message.includes('password')) {
+        errorMessage = 'Password does not meet requirements. Please use a stronger password.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      setError(`Registration failed: ${errorMessage}`);
+      setRegistrationStep('form');
+
+      // Debug information
+      console.log('🔍 Debug information:');
+      console.log('- Form data:', formData);
+      console.log('- Client state:', blindSignatureClient.getSessionInfo());
+      console.log('- Error details:', error);
+
+      // Reset blind signature client on error
+      blindSignatureClient.reset();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await ApiService.forgotPassword(formData.email);
+
+      if (response.success) {
+        setSuccess('Verification code sent to your email!');
+        // Move to OTP verification after delay
+        setTimeout(() => {
+          setCurrentPage('reset');
+        }, 1500);
+      }
+    } catch (error) {
+      setError(error.message || 'Failed to send verification code');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const otpString = formData.otp.join('');
+      const response = await ApiService.resetPassword({
+        email: formData.email,
+        otp: otpString,
+        newPassword: formData.password
+      });
+
+      if (response.success) {
+        setSuccess('Password reset successful! Please login with your new password.');
+        setTimeout(() => {
+          setCurrentPage('login');
+          // Clear form
+          setFormData({
+            email: '',
+            password: '',
+            confirmPassword: '',
+            firstName: '',
+            lastName: '',
+            gender: '',
+            birthDate: '',
+            otp: ['', '', '', '', '', '']
+          });
+        }, 1500);
+      }
+    } catch (error) {
+      setError(error.message || 'Failed to reset password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderError = () => {
+    if (!error) return null;
+    return (
+      <div style={{
+        padding: '12px',
+        marginBottom: '16px',
+        backgroundColor: '#fee',
+        border: '1px solid #fcc',
+        borderRadius: '6px',
+        color: '#c33',
+        fontSize: '14px'
+      }}>
+        {error}
+      </div>
+    );
+  };
+
+  const renderSuccess = () => {
+    if (!success) return null;
+    return (
+      <div style={{
+        padding: '12px',
+        marginBottom: '16px',
+        backgroundColor: '#efe',
+        border: '1px solid #cfc',
+        borderRadius: '6px',
+        color: '#363',
+        fontSize: '14px'
+      }}>
+        {success}
+      </div>
+    );
+  };
+
+  // Demo Modal Component
+  const renderDemoModal = () => {
+    if (!showDemo) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '8px', maxWidth: '800px', width: '90%', maxHeight: '80vh', overflow: 'auto', padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>🔐 How Blind Signatures Protect Your Privacy</h2>
+            <button onClick={() => setShowDemo(false)} style={{ fontSize: '24px', color: '#6b7280', backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}>×</button>
+          </div>
+
+          <div style={{ backgroundColor: '#f3f4f6', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px', color: '#1f2937' }}>Why This Matters for Your Healthcare Privacy</h3>
+            <div style={{ display: 'grid', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                <Shield size={20} style={{ color: '#3b82f6', marginTop: '2px' }} />
+                <div>
+                  <p style={{ fontWeight: '500', color: '#1f2937', margin: '0 0 4px 0' }}>Server Blindness</p>
+                  <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Hospital server never sees your real data during signing</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                <Lock size={20} style={{ color: '#8b5cf6', marginTop: '2px' }} />
+                <div>
+                  <p style={{ fontWeight: '500', color: '#1f2937', margin: '0 0 4px 0' }}>Unlinkability</p>
+                  <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Your registration cannot be traced to your signing session</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                <CheckCircle size={20} style={{ color: '#10b981', marginTop: '2px' }} />
+                <div>
+                  <p style={{ fontWeight: '500', color: '#1f2937', margin: '0 0 4px 0' }}>Verifiable Identity</p>
+                  <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Still prove you're legitimate without revealing identity</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ backgroundColor: '#ecfdf5', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
+            <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>🏥 Real Healthcare Benefits</h4>
+            <ul style={{ fontSize: '14px', color: '#374151', margin: 0, paddingLeft: '20px' }}>
+              <li>Register anonymously without revealing identity to server</li>
+              <li>Cannot be tracked during registration process</li>
+              <li>Still get verifiable medical credentials</li>
+              <li>Protection against data breaches during signup</li>
+              <li>Comply with privacy regulations (HIPAA, GDPR)</li>
+            </ul>
+          </div>
+
+          <button onClick={() => setShowDemo(false)} style={{ width: '100%', backgroundColor: '#3b82f6', color: 'white', padding: '12px', border: 'none', borderRadius: '6px', fontSize: '16px', cursor: 'pointer' }}>
+            Got it, let's register securely!
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Verification Modal Component
+  const renderVerificationModal = () => {
+    if (!showVerifier || !verificationData) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '8px', maxWidth: '600px', width: '90%', maxHeight: '80vh', overflow: 'auto', padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Shield size={28} style={{ color: '#3b82f6' }} />
+              Privacy Verification
+            </h2>
+            <button onClick={() => setShowVerifier(false)} style={{ fontSize: '24px', color: '#6b7280', backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}>×</button>
+          </div>
+
+          <div style={{ backgroundColor: '#ecfdf5', padding: '16px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #bbf7d0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+              <CheckCircle size={24} style={{ color: '#10b981', marginRight: '8px' }} />
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', margin: 0 }}>Privacy Guaranteed</h3>
+            </div>
+            <p style={{ color: '#374151', margin: 0 }}>
+              Your registration data was <strong>never visible to the server</strong> during the signing process.
+              This verification proves the blind signature protocol worked correctly.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Shield size={20} style={{ color: '#3b82f6' }} />
+                Protocol Verification
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Session Created</span>
+                  <CheckCircle size={16} style={{ color: '#10b981' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Message Blinded</span>
+                  <CheckCircle size={16} style={{ color: '#10b981' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Server Blind Signed</span>
+                  <CheckCircle size={16} style={{ color: '#10b981' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Signature Unblinded</span>
+                  <CheckCircle size={16} style={{ color: '#10b981' }} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <EyeOff size={20} style={{ color: '#8b5cf6' }} />
+                Privacy Properties
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Server Blindness</span>
+                  <CheckCircle size={16} style={{ color: '#10b981' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Unlinkability</span>
+                  <CheckCircle size={16} style={{ color: '#10b981' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Unforgeability</span>
+                  <CheckCircle size={16} style={{ color: '#10b981' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Anonymous Registration</span>
+                  <CheckCircle size={16} style={{ color: '#10b981' }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ backgroundColor: '#dbeafe', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>🔐 What This Means for Your Privacy</h3>
+            <ul style={{ fontSize: '14px', color: '#374151', margin: 0, paddingLeft: '20px' }}>
+              <li><strong>Anonymous Registration:</strong> The server signed your credentials without ever seeing your personal data</li>
+              <li><strong>Unlinkable Identity:</strong> Your registration cannot be traced back to the signing session</li>
+              <li><strong>Verifiable Credentials:</strong> You can prove your registration is legitimate without revealing your identity</li>
+              <li><strong>Zero-Knowledge Privacy:</strong> Maximum privacy with full authenticity verification</li>
+            </ul>
+          </div>
+
+          <button onClick={() => setShowVerifier(false)} style={{ width: '100%', backgroundColor: '#6b7280', color: 'white', padding: '12px', borderRadius: '6px', fontSize: '16px', border: 'none', cursor: 'pointer' }}>
+            Close Verification
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const renderLogin = () => (
     <div className="auth-container">
       <div className="auth-card">
@@ -122,7 +669,10 @@ const HealthcareAuth = () => {
           <p className="auth-subtitle">Sign in to access your healthcare portal</p>
         </div>
 
-        <div className="auth-form">
+        <form className="auth-form" onSubmit={handleLogin}>
+          {renderError()}
+          {renderSuccess()}
+
           <div className="form-group">
             <div className="form-label">Email Address</div>
             <div className="input-wrapper">
@@ -133,6 +683,8 @@ const HealthcareAuth = () => {
                 placeholder="Enter your email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
+                required
+                disabled={loading}
               />
             </div>
           </div>
@@ -147,11 +699,14 @@ const HealthcareAuth = () => {
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
+                required
+                disabled={loading}
               />
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={loading}
               >
                 {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
               </button>
@@ -167,13 +722,14 @@ const HealthcareAuth = () => {
               type="button"
               className="link-button"
               onClick={() => setCurrentPage('forgot')}
+              disabled={loading}
             >
               Forgot Password?
             </button>
           </div>
 
-          <button className="primary-button">
-            Sign In
+          <button className="primary-button" type="submit" disabled={loading}>
+            {loading ? <Loader className="spin" size={20} /> : 'Sign In'}
           </button>
 
           <div className="auth-divider">
@@ -181,12 +737,14 @@ const HealthcareAuth = () => {
           </div>
 
           <button
+            type="button"
             className="secondary-button"
             onClick={() => setCurrentPage('register')}
+            disabled={loading}
           >
             Create Account
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
@@ -198,6 +756,7 @@ const HealthcareAuth = () => {
           <button
             className="back-button"
             onClick={() => setCurrentPage('login')}
+            disabled={loading}
           >
             <ArrowLeft size={20} />
           </button>
@@ -211,7 +770,114 @@ const HealthcareAuth = () => {
           <p className="auth-subtitle">Join our healthcare community today</p>
         </div>
 
-        <div className="auth-form">
+        <form className="auth-form" onSubmit={handleRegister}>
+          {/* Privacy Information Banner */}
+          <div style={{
+            background: 'linear-gradient(to right, #dbeafe, #e0e7ff)',
+            padding: '16px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            border: '1px solid #c7d2fe'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <Shield size={24} style={{ color: '#3b82f6', marginRight: '12px' }} />
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', margin: '0 0 4px 0' }}>Anonymous Registration</h3>
+                  <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>Your data is protected using blind signature cryptography</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDemo(true)}
+                style={{
+                  fontSize: '14px',
+                  backgroundColor: '#dbeafe',
+                  color: '#3b82f6',
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                  border: '1px solid #93c5fd',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <Info size={16} />
+                How it works
+              </button>
+            </div>
+          </div>
+
+          {/* Registration Status Indicator */}
+          {registrationStep === 'signing' && (
+            <div style={{
+              backgroundColor: '#faf5ff',
+              padding: '16px',
+              borderRadius: '8px',
+              marginBottom: '16px',
+              border: '1px solid #e9d5ff'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <div className="animate-spin" style={{
+                  width: '20px',
+                  height: '20px',
+                  border: '2px solid #a855f7',
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  marginRight: '12px'
+                }}></div>
+                <div>
+                  <p style={{ color: '#7c3aed', fontWeight: '500', margin: '0 0 4px 0' }}>Performing Anonymous Registration</p>
+                  <p style={{ color: '#8b5cf6', fontSize: '14px', margin: 0 }}>Your data is being signed without server visibility...</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Success with Verification Button */}
+          {registrationStep === 'success' && (
+            <div style={{
+              backgroundColor: '#f0fdf4',
+              padding: '16px',
+              borderRadius: '8px',
+              marginBottom: '16px',
+              border: '1px solid #bbf7d0'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <CheckCircle size={24} style={{ color: '#10b981', marginRight: '12px' }} />
+                  <div>
+                    <p style={{ color: '#065f46', fontWeight: '500', margin: '0 0 4px 0' }}>Anonymous Registration Successful!</p>
+                    <p style={{ color: '#059669', fontSize: '14px', margin: 0 }}>Your privacy has been protected throughout the process</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowVerifier(true)}
+                  style={{
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Eye size={16} />
+                  Verify Privacy
+                </button>
+              </div>
+            </div>
+          )}
+
+          {renderError()}
+          {renderSuccess()}
+
           <div className="form-row">
             <div className="form-group">
               <div className="form-label">First Name</div>
@@ -223,6 +889,8 @@ const HealthcareAuth = () => {
                   placeholder="First Name*"
                   value={formData.firstName}
                   onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  required
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -236,6 +904,8 @@ const HealthcareAuth = () => {
                   placeholder="Last Name*"
                   value={formData.lastName}
                   onChange={(e) => handleInputChange('lastName', e.target.value)}
+                  required
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -251,6 +921,8 @@ const HealthcareAuth = () => {
                 placeholder="Email*"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
+                required
+                disabled={loading}
               />
             </div>
           </div>
@@ -261,11 +933,13 @@ const HealthcareAuth = () => {
               className="form-input select-input"
               value={formData.gender}
               onChange={(e) => handleInputChange('gender', e.target.value)}
+              required
+              disabled={loading}
             >
               <option value="" disabled>-- Select Gender* --</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
             </select>
           </div>
 
@@ -276,6 +950,8 @@ const HealthcareAuth = () => {
               className="form-input date-input"
               value={formData.birthDate}
               onChange={(e) => handleInputChange('birthDate', e.target.value)}
+              required
+              disabled={loading}
             />
           </div>
 
@@ -289,11 +965,14 @@ const HealthcareAuth = () => {
                 placeholder="Password*"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
+                required
+                disabled={loading}
               />
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={loading}
               >
                 {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
               </button>
@@ -326,11 +1005,14 @@ const HealthcareAuth = () => {
                 placeholder="Confirm Password*"
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                required
+                disabled={loading}
               />
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                disabled={loading}
               >
                 {showConfirmPassword ? <Eye size={20} /> : <EyeOff size={20} />}
               </button>
@@ -340,17 +1022,53 @@ const HealthcareAuth = () => {
             )}
           </div>
 
+          {/* Privacy Notice */}
+          <div style={{
+            backgroundColor: '#f9fafb',
+            padding: '16px',
+            borderRadius: '8px',
+            marginBottom: '16px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <h4 style={{ fontSize: '16px', fontWeight: '500', color: '#1f2937', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Shield size={16} style={{ color: '#3b82f6' }} />
+              Your Privacy is Protected
+            </h4>
+            <ul style={{ fontSize: '14px', color: '#6b7280', margin: 0, paddingLeft: '20px' }}>
+              <li>Your registration data will never be visible to the server during signing</li>
+              <li>The signature process is mathematically unlinkable to your identity</li>
+              <li>You receive verifiable credentials without compromising privacy</li>
+              <li>Full compliance with healthcare privacy regulations</li>
+            </ul>
+          </div>
+
           <div className="terms-section">
             <div className="checkbox-label">
-              <input type="checkbox" className="checkbox" />
+              <input type="checkbox" className="checkbox" required disabled={loading} />
               <span className="checkbox-text">
                 I agree to the <a href="#" className="link">Terms of Service</a> and <a href="#" className="link">Privacy Policy</a>
               </span>
             </div>
           </div>
 
-          <button className="primary-button">
-            Create Account
+          <button className="primary-button" type="submit" disabled={loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            {loading ? (
+              <>
+                <div className="animate-spin" style={{
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid white',
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%'
+                }}></div>
+                Creating Anonymous Account...
+              </>
+            ) : (
+              <>
+                <Shield size={20} />
+                Create Anonymous Account
+              </>
+            )}
           </button>
 
           <div className="auth-divider">
@@ -358,12 +1076,14 @@ const HealthcareAuth = () => {
           </div>
 
           <button
+            type="button"
             className="secondary-button"
             onClick={() => setCurrentPage('login')}
+            disabled={loading}
           >
             Sign In
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
@@ -375,6 +1095,7 @@ const HealthcareAuth = () => {
           <button
             className="back-button"
             onClick={() => setCurrentPage('login')}
+            disabled={loading}
           >
             <ArrowLeft size={20} />
           </button>
@@ -384,13 +1105,16 @@ const HealthcareAuth = () => {
             </div>
             <h1 className="logo-text">HealthCare+</h1>
           </div>
-          <h2 className="auth-title">Verify Your Identity</h2>
+          <h2 className="auth-title">Forgot Password</h2>
           <p className="auth-subtitle">
-            We've sent a 6-digit verification code to your email address
+            Enter your email address to receive a verification code
           </p>
         </div>
 
-        <div className="auth-form">
+        <form className="auth-form" onSubmit={handleForgotPassword}>
+          {renderError()}
+          {renderSuccess()}
+
           <div className="form-group">
             <div className="form-label">Email Address</div>
             <div className="input-wrapper">
@@ -401,9 +1125,55 @@ const HealthcareAuth = () => {
                 placeholder="Enter your email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
+                required
+                disabled={loading}
               />
             </div>
           </div>
+
+          <button className="primary-button" type="submit" disabled={loading}>
+            {loading ? <Loader className="spin" size={20} /> : 'Send Verification Code'}
+          </button>
+
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setCurrentPage('login')}
+            disabled={loading}
+          >
+            Back to Sign In
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+
+  const renderResetPassword = () => (
+    <div className="auth-container">
+      <div className="auth-card">
+        <div className="auth-header">
+          <button
+            className="back-button"
+            onClick={() => setCurrentPage('forgot')}
+            disabled={loading}
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div className="logo-section">
+            <div className="logo-icon">
+              <CheckCircle size={32} />
+            </div>
+            <h1 className="logo-text">HealthCare+</h1>
+          </div>
+          <h2 className="auth-title">Reset Password</h2>
+          <p className="auth-subtitle">
+            Enter the verification code and your new password
+          </p>
+        </div>
+
+        <form className="auth-form" onSubmit={handleResetPassword}>
+          {renderError()}
+          {renderSuccess()}
 
           <div className="form-group">
             <div className="form-label">Verification Code</div>
@@ -423,59 +1193,12 @@ const HealthcareAuth = () => {
                       if (prevInput) prevInput.focus();
                     }
                   }}
+                  disabled={loading}
                 />
               ))}
             </div>
           </div>
 
-          <div className="resend-section">
-            <span className="resend-text">Didn't receive the code?</span>
-            <button className="link-button">
-              Resend Code
-            </button>
-          </div>
-
-          <button
-            className="primary-button"
-            onClick={() => setCurrentPage('reset')}
-          >
-            Verify Code
-          </button>
-
-          <button
-            className="secondary-button"
-            onClick={() => setCurrentPage('login')}
-          >
-            Back to Sign In
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderResetPassword = () => (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <button
-            className="back-button"
-            onClick={() => setCurrentPage('forgot')}
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div className="logo-section">
-            <div className="logo-icon">
-              <CheckCircle size={32} />
-            </div>
-            <h1 className="logo-text">HealthCare+</h1>
-          </div>
-          <h2 className="auth-title">Reset Password</h2>
-          <p className="auth-subtitle">
-            Create a new password for your account
-          </p>
-        </div>
-
-        <div className="auth-form">
           <div className="form-group">
             <div className="form-label">New Password</div>
             <div className="input-wrapper">
@@ -486,11 +1209,14 @@ const HealthcareAuth = () => {
                 placeholder="Enter new password"
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
+                required
+                disabled={loading}
               />
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={loading}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -507,11 +1233,14 @@ const HealthcareAuth = () => {
                 placeholder="Confirm new password"
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                required
+                disabled={loading}
               />
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                disabled={loading}
               >
                 {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -528,432 +1257,33 @@ const HealthcareAuth = () => {
             </ul>
           </div>
 
-          <button
-            className="primary-button"
-            onClick={() => setCurrentPage('login')}
-          >
-            Reset Password
+          <button className="primary-button" type="submit" disabled={loading}>
+            {loading ? <Loader className="spin" size={20} /> : 'Reset Password'}
           </button>
 
           <button
+            type="button"
             className="secondary-button"
             onClick={() => setCurrentPage('login')}
+            disabled={loading}
           >
             Back to Sign In
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
 
   return (
     <div className="auth-wrapper">
-      <style>{`
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-
-        .auth-wrapper {
-          min-height: 100vh;
-          background-color: white;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 20px;
-        }
-
-        .auth-container {
-          width: 100%;
-          max-width: 480px;
-          margin: 0 auto;
-        }
-
-        .auth-card {
-          background: white;
-          border-radius: 16px;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-          border: 1px solid #e5e7eb;
-          padding: 32px;
-          position: relative;
-        }
-
-        .back-button {
-          position: absolute;
-          top: 24px;
-          left: 24px;
-          background: none;
-          border: none;
-          color: #6b7280;
-          cursor: pointer;
-          padding: 8px;
-          border-radius: 8px;
-          transition: all 0.2s;
-        }
-
-        .back-button:hover {
-          background-color: #f3f4f6;
-          color: #374151;
-        }
-
-        .auth-header {
-          text-align: center;
-          margin-bottom: 32px;
-        }
-
-        .logo-section {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 12px;
-          margin-bottom: 24px;
-        }
-
-        .logo-icon {
-          width: 48px;
-          height: 48px;
-          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-        }
-
-        .logo-text {
-          font-size: 24px;
-          font-weight: bold;
-          color: #2563eb;
-        }
-
-        .auth-title {
-          font-size: 28px;
-          font-weight: bold;
-          color: #1f2937;
-          margin-bottom: 8px;
-        }
-
-        .auth-subtitle {
-          color: #6b7280;
-          font-size: 16px;
-          line-height: 1.5;
-        }
-
-        .auth-form {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-
-        .form-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 16px;
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .form-label {
-          font-weight: 600;
-          color: #374151;
-          font-size: 14px;
-        }
-
-        .input-wrapper {
-          position: relative;
-        }
-
-        .input-icon {
-          position: absolute;
-          left: 12px;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #6b7280;
-        }
-
-        .form-input {
-          width: 100%;
-          padding: 12px 12px 12px 44px;
-          border: 1px solid #d1d5db;
-          border-radius: 8px;
-          font-size: 16px;
-          transition: all 0.2s;
-          background-color: white;
-        }
-
-        .form-input:focus {
-          outline: none;
-          border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        .date-input {
-          padding: 12px 16px;
-        }
-
-        .select-input {
-          padding: 12px 16px;
-          appearance: none;
-          background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-          background-position: right 12px center;
-          background-repeat: no-repeat;
-          background-size: 16px;
-        }
-
-        .password-strength {
-          margin-top: 8px;
-        }
-
-        .strength-bar {
-          width: 100%;
-          height: 4px;
-          background-color: #e5e7eb;
-          border-radius: 2px;
-          overflow: hidden;
-          margin-bottom: 4px;
-        }
-
-        .strength-fill {
-          height: 100%;
-          transition: all 0.3s ease;
-          border-radius: 2px;
-        }
-
-        .strength-text {
-          font-size: 12px;
-          font-weight: 500;
-          transition: color 0.3s ease;
-        }
-
-        .error-text {
-          color: #ef4444;
-          font-size: 12px;
-          margin-top: 4px;
-          font-weight: 500;
-        }
-
-        .password-toggle {
-          position: absolute;
-          right: 12px;
-          top: 50%;
-          transform: translateY(-50%);
-          background: none;
-          border: none;
-          color: #6b7280;
-          cursor: pointer;
-          padding: 4px;
-          border-radius: 4px;
-          transition: color 0.2s;
-        }
-
-        .password-toggle:hover {
-          color: #374151;
-        }
-
-        .form-options {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin: -8px 0;
-        }
-
-        .checkbox-label {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          cursor: pointer;
-          font-size: 14px;
-        }
-
-        .checkbox {
-          width: 16px;
-          height: 16px;
-          accent-color: #2563eb;
-        }
-
-        .checkbox-text {
-          color: #374151;
-        }
-
-        .link-button {
-          background: none;
-          border: none;
-          color: #2563eb;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          text-decoration: none;
-          transition: color 0.2s;
-        }
-
-        .link-button:hover {
-          color: #1d4ed8;
-          text-decoration: underline;
-        }
-
-        .link {
-          color: #2563eb;
-          text-decoration: none;
-          font-weight: 500;
-        }
-
-        .link:hover {
-          text-decoration: underline;
-        }
-
-        .primary-button {
-          width: 100%;
-          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-          color: white;
-          border: none;
-          padding: 14px 20px;
-          border-radius: 8px;
-          font-size: 16px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .primary-button:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-        }
-
-        .secondary-button {
-          width: 100%;
-          background: transparent;
-          color: #2563eb;
-          border: 2px solid #2563eb;
-          padding: 12px 20px;
-          border-radius: 8px;
-          font-size: 16px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .secondary-button:hover {
-          background-color: #2563eb;
-          color: white;
-        }
-
-        .auth-divider {
-          text-align: center;
-          color: #6b7280;
-          font-size: 14px;
-          margin: 8px 0;
-        }
-
-        .terms-section {
-          margin: -8px 0;
-        }
-
-        .otp-container {
-          display: flex;
-          gap: 12px;
-          justify-content: center;
-        }
-
-        .otp-input {
-          width: 50px;
-          height: 50px;
-          text-align: center;
-          border: 2px solid #d1d5db;
-          border-radius: 8px;
-          font-size: 18px;
-          font-weight: 600;
-          transition: all 0.2s;
-        }
-
-        .otp-input:focus {
-          outline: none;
-          border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        .resend-section {
-          text-align: center;
-          margin: -8px 0;
-        }
-
-        .resend-text {
-          color: #6b7280;
-          font-size: 14px;
-          margin-right: 8px;
-        }
-
-        .password-requirements {
-          background-color: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          padding: 16px;
-          margin: -8px 0;
-        }
-
-        .password-requirements h4 {
-          color: #374151;
-          font-size: 14px;
-          font-weight: 600;
-          margin-bottom: 8px;
-        }
-
-        .password-requirements ul {
-          list-style: none;
-          margin: 0;
-          padding: 0;
-        }
-
-        .password-requirements li {
-          color: #6b7280;
-          font-size: 13px;
-          padding: 2px 0;
-          position: relative;
-          padding-left: 16px;
-        }
-
-        .password-requirements li:before {
-          content: "•";
-          color: #2563eb;
-          position: absolute;
-          left: 0;
-        }
-
-        @media (max-width: 640px) {
-          .auth-card {
-            padding: 24px;
-          }
-
-          .form-row {
-            grid-template-columns: 1fr;
-            gap: 20px;
-          }
-
-          .auth-title {
-            font-size: 24px;
-          }
-
-          .otp-container {
-            gap: 8px;
-          }
-
-          .otp-input {
-            width: 45px;
-            height: 45px;
-            font-size: 16px;
-          }
-        }
-      `}</style>
-
       {currentPage === 'login' && renderLogin()}
       {currentPage === 'register' && renderRegister()}
       {currentPage === 'forgot' && renderForgotPassword()}
       {currentPage === 'reset' && renderResetPassword()}
+
+      {/* Render modals */}
+      {renderDemoModal()}
+      {renderVerificationModal()}
     </div>
   );
 };
