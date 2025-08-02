@@ -1,23 +1,133 @@
 plugins {
+    id 'org.springframework.boot' version '2.7.14'
+    id 'io.spring.dependency-management' version '1.0.15.RELEASE'
     id 'java'
 }
 
-group = 'org.example'
-version = '1.0-SNAPSHOT'
+group = 'com.healthcare'
+version = '1.0.0'
+sourceCompatibility = '8'
 
 repositories {
     mavenCentral()
+    gradlePluginPortal()
+    // Only add Corda repos if explicitly enabled
+    if (project.hasProperty('enableCorda') && project.enableCorda == 'true') {
+        maven {
+            url 'https://software.r3.com/artifactory/corda'
+            credentials {
+                username = project.findProperty('cordaRepoUsername') ?: ''
+                password = project.findProperty('cordaRepoPassword') ?: ''
+            }
+        }
+        maven {
+            url 'https://software.r3.com/artifactory/corda-dependencies'
+            credentials {
+                username = project.findProperty('cordaRepoUsername') ?: ''
+                password = project.findProperty('cordaRepoPassword') ?: ''
+            }
+        }
+    }
 }
 
 dependencies {
-    testImplementation platform('org.junit:junit-bom:5.10.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+    // Spring Boot dependencies
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // Database
+    implementation 'mysql:mysql-connector-java:8.0.33'
+    implementation 'com.h2database:h2:2.1.214'
+
+    // Blockchain simulation dependencies (always available)
+    implementation 'com.google.guava:guava:30.1.1-jre'
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
+    implementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
+
+    // Conditional Corda dependencies
+    if (project.hasProperty('enableCorda') && project.enableCorda == 'true') {
+        implementation 'net.corda:corda-core:4.8'
+        implementation 'net.corda:corda-rpc:4.8'
+        implementation 'net.corda:corda-jackson:4.8'
+        implementation 'net.corda:corda-serialization:4.8'
+        implementation 'net.corda:corda-node-api:4.8'
+        implementation 'net.corda:corda-finance-contracts:4.8'
+        implementation 'net.corda:corda-finance-workflows:4.8'
+        implementation 'co.paralleluniverse:quasar-core:0.7.15_r3'
+        testImplementation 'net.corda:corda-node-driver:4.8'
+        testImplementation 'net.corda:corda-test-utils:4.8'
+    }
+
+    // Additional utilities
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    implementation 'commons-codec:commons-codec:1.15'
+
+    // Logging
+    implementation 'org.slf4j:slf4j-api:1.7.36'
+    implementation 'ch.qos.logback:logback-classic:1.2.12'
+
+    // JSON processing
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.14.2'
+
+    // Testing dependencies
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.springframework.security:spring-security-test'
 }
 
+// Java compilation settings
+compileJava {
+    options.compilerArgs << "-parameters"
+}
+
+// Test configuration
 test {
     useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
 }
 
-dependencies {
-    implementation 'mysql:mysql-connector-java:8.0.33'
+// Spring Boot configuration
+springBoot {
+    mainClass = 'com.healthcare.HealthcareBlockchainApplication'
+}
+
+// JAR configuration
+jar {
+    enabled = false
+    archiveBaseName = 'healthcare-blockchain'
+}
+
+// Fat JAR configuration
+bootJar {
+    archiveBaseName = 'healthcare-blockchain'
+    archiveVersion = '1.0.0'
+}
+
+// Wrapper configuration
+wrapper {
+    gradleVersion = '7.6'
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+// Custom task to build without Corda (default)
+task buildSimple {
+    group = 'build'
+    description = 'Build without Corda dependencies (uses simulation only)'
+    dependsOn 'build'
+}
+
+// Custom task to build with Corda (requires credentials)
+task buildWithCorda {
+    group = 'build'
+    description = 'Build with full Corda support (requires R3 credentials)'
+    doFirst {
+        project.ext.enableCorda = 'true'
+    }
+    dependsOn 'build'
 }

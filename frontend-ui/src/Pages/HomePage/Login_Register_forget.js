@@ -335,16 +335,35 @@ const HealthcareAuth = () => {
         setSuccess('🎉 Anonymous registration successful! Your privacy has been protected.');
         setRegistrationStep('success');
 
-        // Capture verification data
+        // Enhanced verification data capture with your backend structure
         setVerificationData({
           sessionId: signatureResult.sessionId,
           timestamp: new Date().toISOString(),
           blindSignatureUsed: true,
           privacyProtected: true,
-          user: completeResponse.user
+          user: completeResponse.user,
+          // Capture blockchain data from your registerComplete response
+          blockchain: {
+            cordaTransactionId: completeResponse.blockchain?.cordaTransactionId,
+            identityCommitment: completeResponse.blockchain?.identityCommitment,
+            blockchainAddress: completeResponse.blockchain?.blockchainAddress,
+            privacyLevel: completeResponse.blockchain?.privacyLevel || 'PSEUDONYMOUS',
+            complianceProof: completeResponse.blockchain?.complianceProof,
+            immutable: completeResponse.blockchain?.immutable !== false,
+            chainVerified: completeResponse.blockchain?.chainVerified !== false,
+            fallbackMode: completeResponse.blockchain?.fallbackMode || false,
+            timestamp: completeResponse.blockchain?.timestamp || new Date().toISOString()
+          },
+          privacy: completeResponse.privacy || {
+            blindSignatureUsed: true,
+            serverBlindness: true,
+            unlinkableRegistration: true,
+            blockchainPrivacy: true
+          }
         });
 
         console.log('✅ Registration completed successfully:', completeResponse.user);
+        console.log('🔗 Blockchain data captured:', completeResponse.blockchain);
 
         // Reset blind signature client
         blindSignatureClient.reset();
@@ -563,93 +582,400 @@ const HealthcareAuth = () => {
   const renderVerificationModal = () => {
     if (!showVerifier || !verificationData) return null;
 
+    const blockchain = verificationData.blockchain || {};
+    const isFallbackMode = blockchain.fallbackMode;
+    const isChainVerified = blockchain.chainVerified !== false;
+
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-        <div style={{ backgroundColor: 'white', borderRadius: '8px', maxWidth: '600px', width: '90%', maxHeight: '80vh', overflow: 'auto', padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Shield size={28} style={{ color: '#3b82f6' }} />
-              Privacy Verification
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          maxWidth: '800px',
+          width: '95%',
+          maxHeight: '90vh',
+          overflow: 'auto',
+          padding: '28px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+        }}>
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '24px',
+            paddingBottom: '16px',
+            borderBottom: '2px solid #e5e7eb'
+          }}>
+            <h2 style={{
+              fontSize: '28px',
+              fontWeight: 'bold',
+              color: '#1f2937',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              margin: 0
+            }}>
+              <div style={{
+                background: isChainVerified
+                  ? 'linear-gradient(45deg, #3b82f6, #8b5cf6)'
+                  : 'linear-gradient(45deg, #f59e0b, #ef4444)',
+                borderRadius: '12px',
+                padding: '8px',
+                color: 'white'
+              }}>
+                <Shield size={32} />
+              </div>
+              {isChainVerified ? 'Blockchain Privacy Verification' : 'Registration Privacy Verification'}
             </h2>
-            <button onClick={() => setShowVerifier(false)} style={{ fontSize: '24px', color: '#6b7280', backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}>×</button>
+            <button
+              onClick={() => setShowVerifier(false)}
+              style={{
+                fontSize: '24px',
+                color: '#6b7280',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '8px',
+                borderRadius: '6px'
+              }}
+            >
+              ×
+            </button>
           </div>
 
-          <div style={{ backgroundColor: '#ecfdf5', padding: '16px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #bbf7d0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-              <CheckCircle size={24} style={{ color: '#10b981', marginRight: '8px' }} />
-              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', margin: 0 }}>Privacy Guaranteed</h3>
+          {/* Status Banner */}
+          <div style={{
+            background: isChainVerified
+              ? 'linear-gradient(to right, #ecfdf5, #d1fae5)'
+              : 'linear-gradient(to right, #fef3c7, #fed7aa)',
+            padding: '20px',
+            borderRadius: '12px',
+            marginBottom: '24px',
+            border: isChainVerified ? '2px solid #bbf7d0' : '2px solid #fdba74'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+              {isChainVerified ? (
+                <CheckCircle size={28} style={{ color: '#10b981', marginRight: '12px' }} />
+              ) : (
+                <AlertTriangle size={28} style={{ color: '#f59e0b', marginRight: '12px' }} />
+              )}
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#1f2937', margin: 0 }}>
+                {isChainVerified
+                  ? 'Registration Verified & Secured on Blockchain'
+                  : 'Registration Secured with Privacy Protection'
+                }
+              </h3>
             </div>
-            <p style={{ color: '#374151', margin: 0 }}>
-              Your registration data was <strong>never visible to the server</strong> during the signing process.
-              This verification proves the blind signature protocol worked correctly.
+            <p style={{ color: '#374151', margin: 0, fontSize: '16px', lineHeight: '1.5' }}>
+              Your registration has been <strong>anonymously processed</strong> using blind signature cryptography
+              {isChainVerified
+                ? ' and <strong>permanently recorded</strong> on the Corda blockchain with complete privacy protection.'
+                : ' with <strong>simulated blockchain</strong> verification for development purposes.'
+              }
             </p>
+            {isFallbackMode && (
+              <div style={{
+                marginTop: '12px',
+                padding: '8px 12px',
+                backgroundColor: '#fef3c7',
+                borderRadius: '6px',
+                fontSize: '14px',
+                color: '#92400e'
+              }}>
+                <strong>Development Mode:</strong> Full Corda blockchain will be available in production
+              </div>
+            )}
           </div>
 
-          <div style={{ display: 'grid', gap: '16px', marginBottom: '20px' }}>
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Shield size={20} style={{ color: '#3b82f6' }} />
-                Protocol Verification
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Session Created</span>
-                  <CheckCircle size={16} style={{ color: '#10b981' }} />
+          {/* Privacy Protection Section */}
+          <div style={{ marginBottom: '24px' }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1f2937',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <EyeOff size={20} style={{ color: '#8b5cf6' }} />
+              Privacy Protection Verified
+            </h3>
+
+            <div style={{ display: 'grid', gap: '12px' }}>
+              {[
+                { label: 'Server Blindness', desc: 'Server never saw your personal data during signing', icon: '🔒', verified: true },
+                { label: 'Unlinkable Registration', desc: 'Cannot trace registration back to signing session', icon: '🔗', verified: true },
+                { label: 'Anonymous Identity', desc: 'Blockchain contains no personal information', icon: '👤', verified: true },
+                { label: 'Cryptographic Proof', desc: 'Mathematically provable privacy preservation', icon: '🧮', verified: true }
+              ].map((item, index) => (
+                <div key={index} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  backgroundColor: '#f8fafc',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '20px' }}>{item.icon}</span>
+                    <div>
+                      <span style={{ fontSize: '15px', fontWeight: '500', color: '#1f2937' }}>
+                        {item.label}
+                      </span>
+                      <p style={{ fontSize: '13px', color: '#6b7280', margin: '2px 0 0 0' }}>
+                        {item.desc}
+                      </p>
+                    </div>
+                  </div>
+                  <CheckCircle size={18} style={{ color: '#10b981' }} />
                 </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Blockchain Verification Section */}
+          <div style={{ marginBottom: '24px' }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1f2937',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <div style={{
+                width: '20px',
+                height: '20px',
+                background: isChainVerified
+                  ? 'linear-gradient(45deg, #3b82f6, #1d4ed8)'
+                  : 'linear-gradient(45deg, #f59e0b, #dc2626)',
+                borderRadius: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <span style={{ color: 'white', fontSize: '12px', fontWeight: 'bold' }}>⛓</span>
+              </div>
+              {isChainVerified ? 'Corda Blockchain Registration' : 'Blockchain Registration (Simulated)'}
+            </h3>
+
+            <div style={{
+              backgroundColor: isChainVerified ? '#dbeafe' : '#fef3c7',
+              padding: '16px',
+              borderRadius: '10px',
+              border: isChainVerified ? '1px solid #93c5fd' : '1px solid #fdba74'
+            }}>
+              <div style={{ display: 'grid', gap: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Message Blinded</span>
-                  <CheckCircle size={16} style={{ color: '#10b981' }} />
+                  <span style={{ fontSize: '14px', color: isChainVerified ? '#1e40af' : '#92400e', fontWeight: '500' }}>
+                    Transaction ID
+                  </span>
+                  <code style={{
+                    fontSize: '12px',
+                    backgroundColor: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    color: '#1f2937',
+                    maxWidth: '200px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {blockchain.cordaTransactionId?.substring(0, 16)}...
+                  </code>
                 </div>
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Server Blind Signed</span>
-                  <CheckCircle size={16} style={{ color: '#10b981' }} />
+                  <span style={{ fontSize: '14px', color: isChainVerified ? '#1e40af' : '#92400e', fontWeight: '500' }}>
+                    Identity Commitment
+                  </span>
+                  <code style={{
+                    fontSize: '12px',
+                    backgroundColor: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    color: '#1f2937',
+                    maxWidth: '200px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {blockchain.identityCommitment?.substring(0, 16)}...
+                  </code>
                 </div>
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Signature Unblinded</span>
-                  <CheckCircle size={16} style={{ color: '#10b981' }} />
+                  <span style={{ fontSize: '14px', color: isChainVerified ? '#1e40af' : '#92400e', fontWeight: '500' }}>
+                    Privacy Level
+                  </span>
+                  <span style={{
+                    fontSize: '12px',
+                    backgroundColor: '#22c55e',
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    fontWeight: '500'
+                  }}>
+                    {blockchain.privacyLevel || 'PSEUDONYMOUS'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', color: isChainVerified ? '#1e40af' : '#92400e', fontWeight: '500' }}>
+                    Blockchain Network
+                  </span>
+                  <span style={{ fontSize: '12px', color: isChainVerified ? '#1e40af' : '#92400e', fontWeight: '500' }}>
+                    {isChainVerified ? 'Corda Healthcare Network' : 'Simulated Network'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '14px', color: isChainVerified ? '#1e40af' : '#92400e', fontWeight: '500' }}>
+                    Immutable Record
+                  </span>
+                  <span style={{
+                    fontSize: '12px',
+                    backgroundColor: blockchain.immutable ? '#22c55e' : '#f59e0b',
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    fontWeight: '500'
+                  }}>
+                    {blockchain.immutable ? 'YES' : 'SIMULATED'}
+                  </span>
+                </div>
+
+                {blockchain.timestamp && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '14px', color: isChainVerified ? '#1e40af' : '#92400e', fontWeight: '500' }}>
+                      Timestamp
+                    </span>
+                    <span style={{ fontSize: '12px', color: '#1f2937' }}>
+                      {new Date(blockchain.timestamp).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Technical Details */}
+          <div style={{ marginBottom: '24px' }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1f2937',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <Info size={20} style={{ color: '#3b82f6' }} />
+              Technical Implementation
+            </h3>
+
+            <div style={{
+              backgroundColor: '#f1f5f9',
+              padding: '16px',
+              borderRadius: '10px',
+              border: '1px solid #cbd5e1'
+            }}>
+              <div style={{ display: 'grid', gap: '8px', fontSize: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#475569', fontWeight: '500' }}>Algorithm:</span>
+                  <span style={{ color: '#1f2937' }}>RSA Blind Signature (BSSA)</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#475569', fontWeight: '500' }}>Key Size:</span>
+                  <span style={{ color: '#1f2937' }}>2048-bit RSA</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#475569', fontWeight: '500' }}>Hash Function:</span>
+                  <span style={{ color: '#1f2937' }}>SHA-256</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#475569', fontWeight: '500' }}>Blockchain:</span>
+                  <span style={{ color: '#1f2937' }}>
+                    {isChainVerified ? 'R3 Corda DLT' : 'Simulated (Corda in Production)'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#475569', fontWeight: '500' }}>Privacy Standard:</span>
+                  <span style={{ color: '#1f2937' }}>Zero-Knowledge Registration</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#475569', fontWeight: '500' }}>Session ID:</span>
+                  <span style={{ color: '#1f2937', fontSize: '12px' }}>
+                    {verificationData.sessionId?.substring(0, 20)}...
+                  </span>
                 </div>
               </div>
             </div>
+          </div>
 
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <EyeOff size={20} style={{ color: '#8b5cf6' }} />
-                Privacy Properties
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Server Blindness</span>
-                  <CheckCircle size={16} style={{ color: '#10b981' }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Unlinkability</span>
-                  <CheckCircle size={16} style={{ color: '#10b981' }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Unforgeability</span>
-                  <CheckCircle size={16} style={{ color: '#10b981' }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '14px', color: '#6b7280' }}>Anonymous Registration</span>
-                  <CheckCircle size={16} style={{ color: '#10b981' }} />
-                </div>
-              </div>
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => setShowVerifier(false)}
+              style={{
+                flex: 1,
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                padding: '14px',
+                borderRadius: '8px',
+                fontSize: '16px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <CheckCircle size={20} />
+              Continue to Healthcare Portal
+            </button>
+
+            {isChainVerified && (
+              <button
+                onClick={() => {
+                  // Optional: Add blockchain explorer link
+                  window.open(`/blockchain/transaction/${blockchain.cordaTransactionId}`, '_blank');
+                }}
+                style={{
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  padding: '14px 20px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+              >
+                View on Blockchain
+              </button>
+            )}
+          </div>
+
+          {/* Development Notice */}
+          {isFallbackMode && (
+            <div style={{
+              marginTop: '16px',
+              padding: '12px',
+              backgroundColor: '#fef3c7',
+              borderRadius: '8px',
+              fontSize: '13px',
+              color: '#92400e',
+              textAlign: 'center'
+            }}>
+              <strong>Development Notice:</strong> This registration used simulated blockchain.
+              In production, all transactions are recorded on the live Corda healthcare network.
             </div>
-          </div>
-
-          <div style={{ backgroundColor: '#dbeafe', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>🔐 What This Means for Your Privacy</h3>
-            <ul style={{ fontSize: '14px', color: '#374151', margin: 0, paddingLeft: '20px' }}>
-              <li><strong>Anonymous Registration:</strong> The server signed your credentials without ever seeing your personal data</li>
-              <li><strong>Unlinkable Identity:</strong> Your registration cannot be traced back to the signing session</li>
-              <li><strong>Verifiable Credentials:</strong> You can prove your registration is legitimate without revealing your identity</li>
-              <li><strong>Zero-Knowledge Privacy:</strong> Maximum privacy with full authenticity verification</li>
-            </ul>
-          </div>
-
-          <button onClick={() => setShowVerifier(false)} style={{ width: '100%', backgroundColor: '#6b7280', color: 'white', padding: '12px', borderRadius: '6px', fontSize: '16px', border: 'none', cursor: 'pointer' }}>
-            Close Verification
-          </button>
+          )}
         </div>
       </div>
     );

@@ -26,6 +26,8 @@ import Payment from './Pages/HomePage/Payment';
 import LoginRegister from './Pages/HomePage/Login_Register_forget';
 //Patient Side
 
+import TestRegistration from './Pages/BlockchianTest/TestRegistration.js';
+
 const PatientHomePage = lazy(() => import('./Pages/HomePage/PatientHomePage'));
 
 function App() {
@@ -69,6 +71,10 @@ function App() {
               <Route path="/payment" element={<Payment />} />
               <Route path="/loginRegister" element={<LoginRegister />} />
                //Patient Side
+
+               //TESTING SIDE
+               <Route path="/TestRegistration" element={<TestRegistration />} />
+               //TESTING SIDE
 
             </Routes>
           </Suspense>
