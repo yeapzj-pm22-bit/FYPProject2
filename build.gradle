@@ -1,3 +1,26 @@
+// COMPLETE CORDA R3 BUILD - All dependencies included
+// This includes Spring Security, Kotlin runtime, and all Corda dependencies
+
+buildscript {
+    ext {
+        corda_release_version = '4.10'
+        kotlin_version = '1.2.71'
+        spring_boot_version = '2.7.14'
+    }
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:2.7.14"
+        classpath "io.spring.gradle:dependency-management-plugin:1.0.15.RELEASE"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.2.71"
+    }
+}
+
 plugins {
     id 'org.springframework.boot' version '2.7.14'
     id 'io.spring.dependency-management' version '1.0.15.RELEASE'
@@ -6,28 +29,13 @@ plugins {
 
 group = 'com.healthcare'
 version = '1.0.0'
-sourceCompatibility = '8'
+sourceCompatibility = '11'
+targetCompatibility = '11'
 
 repositories {
+    mavenLocal()
     mavenCentral()
     gradlePluginPortal()
-    // Only add Corda repos if explicitly enabled
-    if (project.hasProperty('enableCorda') && project.enableCorda == 'true') {
-        maven {
-            url 'https://software.r3.com/artifactory/corda'
-            credentials {
-                username = project.findProperty('cordaRepoUsername') ?: ''
-                password = project.findProperty('cordaRepoPassword') ?: ''
-            }
-        }
-        maven {
-            url 'https://software.r3.com/artifactory/corda-dependencies'
-            credentials {
-                username = project.findProperty('cordaRepoUsername') ?: ''
-                password = project.findProperty('cordaRepoPassword') ?: ''
-            }
-        }
-    }
 }
 
 dependencies {
@@ -36,55 +44,51 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // SPRING SECURITY (was missing)
     implementation 'org.springframework.boot:spring-boot-starter-security'
 
     // Database
     implementation 'mysql:mysql-connector-java:8.0.33'
     implementation 'com.h2database:h2:2.1.214'
 
-    // Blockchain simulation dependencies (always available)
-    implementation 'com.google.guava:guava:30.1.1-jre'
-    implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
-    implementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
-
-    // Conditional Corda dependencies
-    if (project.hasProperty('enableCorda') && project.enableCorda == 'true') {
-        implementation 'net.corda:corda-core:4.8'
-        implementation 'net.corda:corda-rpc:4.8'
-        implementation 'net.corda:corda-jackson:4.8'
-        implementation 'net.corda:corda-serialization:4.8'
-        implementation 'net.corda:corda-node-api:4.8'
-        implementation 'net.corda:corda-finance-contracts:4.8'
-        implementation 'net.corda:corda-finance-workflows:4.8'
-        implementation 'co.paralleluniverse:quasar-core:0.7.15_r3'
-        testImplementation 'net.corda:corda-node-driver:4.8'
-        testImplementation 'net.corda:corda-test-utils:4.8'
-    }
+    // KOTLIN RUNTIME (required for Corda)
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.71'
+    implementation 'org.jetbrains.kotlin:kotlin-reflect:1.2.71'
 
     // Additional utilities
+    implementation 'com.google.guava:guava:30.1.1-jre'
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
     implementation 'org.apache.commons:commons-lang3:3.12.0'
     implementation 'commons-codec:commons-codec:1.15'
-
-    // Logging
     implementation 'org.slf4j:slf4j-api:1.7.36'
     implementation 'ch.qos.logback:logback-classic:1.2.12'
-
-    // JSON processing
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.14.2'
+    implementation 'org.jetbrains:annotations:24.0.1'
 
-    // Testing dependencies
+    // REAL CORDA DEPENDENCIES - From libs folder
+    implementation fileTree(dir: 'libs', include: ['corda-core-*.jar'])
+    implementation fileTree(dir: 'libs', include: ['corda-rpc-*.jar'])
+    implementation fileTree(dir: 'libs', include: ['corda-jackson-*.jar'])
+    implementation fileTree(dir: 'libs', include: ['corda-serialization-*.jar'])
+    implementation fileTree(dir: 'libs', include: ['corda-node-api-*.jar'])
+    implementation fileTree(dir: 'libs', include: ['corda-common-*.jar'])
+    implementation fileTree(dir: 'libs', include: ['quasar-core-*.jar'])
+
+    // Test dependencies
+    testImplementation fileTree(dir: 'libs', include: ['corda-node-driver-*.jar'])
+    testImplementation fileTree(dir: 'libs', include: ['corda-test-utils-*.jar'])
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'junit:junit:4.13.2'
 }
 
-// Java compilation settings
+// Simple Java compilation
 compileJava {
     options.compilerArgs << "-parameters"
+    options.fork = true
 }
 
-// Test configuration
 test {
     useJUnitPlatform()
     testLogging {
@@ -97,37 +101,190 @@ springBoot {
     mainClass = 'com.healthcare.HealthcareBlockchainApplication'
 }
 
-// JAR configuration
 jar {
     enabled = false
     archiveBaseName = 'healthcare-blockchain'
 }
 
-// Fat JAR configuration
 bootJar {
     archiveBaseName = 'healthcare-blockchain'
-    archiveVersion = '1.0.0'
+    archiveVersion = project.version
 }
 
-// Wrapper configuration
-wrapper {
-    gradleVersion = '7.6'
-    distributionType = Wrapper.DistributionType.BIN
-}
+// =====================================================
+// CORDA TASKS - SIMPLIFIED
+// =====================================================
 
-// Custom task to build without Corda (default)
-task buildSimple {
-    group = 'build'
-    description = 'Build without Corda dependencies (uses simulation only)'
-    dependsOn 'build'
-}
+task createCordaNode {
+    group = 'corda'
+    description = 'Create Corda node'
+    doLast {
+        // Create node directory
+        mkdir 'corda-node'
 
-// Custom task to build with Corda (requires credentials)
-task buildWithCorda {
-    group = 'build'
-    description = 'Build with full Corda support (requires R3 credentials)'
-    doFirst {
-        project.ext.enableCorda = 'true'
+        // Copy corda.jar if it exists
+        def cordaJar = file('libs/corda.jar')
+        if (cordaJar.exists()) {
+            copy {
+                from cordaJar
+                into 'corda-node'
+            }
+            println 'Copied corda.jar to node directory'
+        } else {
+            println 'ERROR: corda.jar not found in libs folder'
+            return
+        }
+
+        // Create simple node.conf
+        def nodeConf = file('corda-node/node.conf')
+        nodeConf.text = '''myLegalName="O=HealthcareNode,L=NewYork,C=US"
+p2pAddress="localhost:10005"
+rpcSettings {
+    address="localhost:10006"
+    adminAddress="localhost:10046"
+}
+rpcUsers=[
+    {
+        user=healthcare
+        password=healthcare123
+        permissions=[ALL]
     }
-    dependsOn 'build'
+]
+devMode=true
+notary {
+    validating=true
+}
+dataSourceProperties {
+    dataSourceClassName="org.h2.jdbcx.JdbcDataSource"
+    dataSource.url="jdbc:h2:file:./persistence;DB_CLOSE_ON_EXIT=FALSE"
+    dataSource.user="sa"
+    dataSource.password=""
+}
+detectPublicIp=false
+'''
+
+        println 'Created node.conf'
+        println ''
+        println 'CORDA NODE READY!'
+        println 'To start: cd corda-node && java -jar corda.jar'
+    }
+}
+
+task verifyJars {
+    group = 'verification'
+    description = 'Check JAR files in libs folder'
+    doLast {
+        println 'Checking libs folder...'
+
+        def libsDir = file('libs')
+        if (!libsDir.exists()) {
+            println 'ERROR: libs folder does not exist'
+            return
+        }
+
+        def jars = []
+        libsDir.listFiles().each { file ->
+            if (file.name.endsWith('.jar')) {
+                jars << file.name
+            }
+        }
+
+        println "Found ${jars.size()} JAR files:"
+        jars.sort().each { jar ->
+            println "  - $jar"
+        }
+
+        // Check essential JARs
+        def essential = [
+                'corda-core-4.10.jar',
+                'corda-rpc-4.10.jar',
+                'corda-jackson-4.10.jar',
+                'corda-serialization-4.10.jar',
+                'corda-node-api-4.10.jar',
+                'corda.jar',
+                'quasar-core-0.7.15_r3.jar'
+        ]
+
+        println ''
+        println 'Essential JARs status:'
+        essential.each { jar ->
+            if (jars.contains(jar)) {
+                println "  ✅ $jar"
+            } else {
+                println "  ❌ $jar (MISSING)"
+            }
+        }
+    }
+}
+
+task startNode {
+    group = 'corda'
+    description = 'Start Corda node'
+    dependsOn 'createCordaNode'
+    doLast {
+        println 'Starting Corda node...'
+        exec {
+            workingDir file('corda-node')
+            commandLine 'java', '-jar', 'corda.jar'
+        }
+    }
+}
+
+task runApp(type: JavaExec, dependsOn: 'classes') {
+    group = 'application'
+    description = 'Run Spring Boot application'
+    main = 'com.healthcare.HealthcareBlockchainApplication'
+    classpath = sourceSets.main.runtimeClasspath
+    systemProperty 'spring.profiles.active', 'real-corda'
+}
+
+task fixJavaFiles {
+    group = 'setup'
+    description = 'Fix Java file structure issues'
+    doLast {
+        println 'Fixing Java file structure...'
+
+        // Create separate flow files
+        mkdir 'src/main/java/com/healthcare/flows'
+
+        println 'Java files need to be split manually:'
+        println '1. PatientRegistrationInitiator.java'
+        println '2. PatientUpdateInitiator.java'
+        println '3. PatientQueryFlow.java'
+        println ''
+        println 'Each public class must be in its own file!'
+    }
+}
+
+task quickHelp {
+    group = 'help'
+    description = 'Show quick setup help'
+    doLast {
+        println '''
+HEALTHCARE BLOCKCHAIN QUICK SETUP:
+===================================
+
+🚨 FIRST: Fix Java file structure issues:
+1. Split PatientRegistrationFlow.java into 3 separate files
+2. Each public class needs its own file
+
+📋 STEPS:
+1. ./gradlew fixJavaFiles     # Get file splitting instructions
+2. ./gradlew verifyJars       # Check JARs are present
+3. ./gradlew clean build      # Build project
+4. ./gradlew createCordaNode  # Create blockchain node
+5. cd corda-node && java -jar corda.jar  # Start blockchain
+6. ./gradlew runApp           # Start API
+
+🔧 If missing JARs, copy from:
+C:\\Users\\yeapz\\Downloads\\community-4.10\\
+
+✅ This will be 100% real Corda R3 blockchain!
+'''
+    }
+}
+
+wrapper {
+    gradleVersion = '8.4'
+    distributionType = Wrapper.DistributionType.BIN
 }

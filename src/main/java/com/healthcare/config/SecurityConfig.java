@@ -1,4 +1,4 @@
-// src/main/java/com/healthcare/config/SecurityConfig.java
+// File: src/main/java/com/healthcare/config/SecurityConfig.java
 package com.healthcare.config;
 
 import org.springframework.context.annotation.Bean;
