@@ -2,6 +2,7 @@
 package com.healthcare.controller;
 
 import com.healthcare.service.UnifiedBlockchainService;
+import com.healthcare.service.CordaClientService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,9 @@ public class BlockchainController {
 
     @Autowired
     private UnifiedBlockchainService blockchainService;
+
+    @Autowired(required = false)
+    private CordaClientService cordaClientService;
 
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> registerPatient(@RequestBody Map<String, Object> registrationData) {
@@ -239,25 +243,137 @@ public class BlockchainController {
         }
     }
 
+    // ENHANCED HEALTH ENDPOINT - This is what your Node.js expects
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> healthCheck() {
+        logger.info("🏥 Health check request received");
+
         Map<String, Object> health = new HashMap<>();
-        health.put("status", "healthy");
-        health.put("service", "Healthcare Blockchain API");
-        health.put("timestamp", System.currentTimeMillis());
-        health.put("blockchainAvailable", blockchainService.isBlockchainAvailable());
-        health.put("activeProvider", blockchainService.getActiveProvider().toString());
 
-        // Add provider-specific info
-        Map<String, Object> providerInfo = blockchainService.getProviderInfo();
-        health.put("providerInfo", providerInfo);
+        try {
+            // Basic service info
+            health.put("success", true);
+            health.put("service", "Healthcare Blockchain API");
+            health.put("timestamp", java.time.Instant.now().toString());
 
-        return ResponseEntity.ok(health);
+            // Blockchain availability
+            boolean blockchainAvailable = blockchainService.isBlockchainAvailable();
+            health.put("blockchainAvailable", blockchainAvailable);
+
+            // Active provider info
+            String activeProvider = blockchainService.getActiveProvider().toString();
+            health.put("activeProvider", activeProvider);
+
+            // Corda-specific status
+            boolean cordaAvailable = false;
+            String networkInfo = "Simulation Mode";
+            Map<String, Object> cordaDetails = new HashMap<>();
+
+            if (cordaClientService != null) {
+                cordaAvailable = cordaClientService.isConnected();
+                cordaDetails.put("serviceAvailable", true);
+                cordaDetails.put("connected", cordaAvailable);
+
+                if (cordaAvailable) {
+                    try {
+                        Map<String, Object> nodeInfo = cordaClientService.getNodeInfo();
+                        networkInfo = (String) nodeInfo.get("nodeName");
+                        cordaDetails.put("nodeInfo", nodeInfo);
+                        cordaDetails.put("capabilities", nodeInfo.get("capabilities"));
+                    } catch (Exception e) {
+                        logger.warn("Failed to get Corda node info: {}", e.getMessage());
+                        cordaDetails.put("nodeInfoError", e.getMessage());
+                    }
+                }
+            } else {
+                cordaDetails.put("serviceAvailable", false);
+                cordaDetails.put("reason", "CordaClientService not configured");
+            }
+
+            health.put("cordaAvailable", cordaAvailable);
+            health.put("networkInfo", networkInfo);
+            health.put("cordaDetails", cordaDetails);
+
+            // Provider-specific info
+            try {
+                Map<String, Object> providerInfo = blockchainService.getProviderInfo();
+                health.put("providerInfo", providerInfo);
+            } catch (Exception e) {
+                logger.warn("Failed to get provider info: {}", e.getMessage());
+                health.put("providerInfoError", e.getMessage());
+            }
+
+            // Network type determination
+            if (cordaAvailable) {
+                health.put("networkType", "Corda R3 Blockchain");
+                health.put("mode", "production");
+            } else {
+                health.put("networkType", "Simulation Mode");
+                health.put("mode", "simulation");
+            }
+
+            logger.info("✅ Health check completed - Corda: {}, Provider: {}",
+                    cordaAvailable, activeProvider);
+
+            return ResponseEntity.ok(health);
+
+        } catch (Exception e) {
+            logger.error("❌ Health check failed", e);
+
+            health.put("success", false);
+            health.put("service", "Healthcare Blockchain API (Error)");
+            health.put("error", e.getMessage());
+            health.put("cordaAvailable", false);
+            health.put("blockchainAvailable", false);
+            health.put("networkInfo", "Service Error");
+
+            return ResponseEntity.status(500).body(health);
+        }
+    }
+
+    // ALTERNATIVE SIMPLE HEALTH ENDPOINT
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Object>> simpleStatus() {
+        Map<String, Object> status = new HashMap<>();
+
+        try {
+            status.put("alive", true);
+            status.put("service", "Healthcare Blockchain API");
+            status.put("timestamp", System.currentTimeMillis());
+
+            boolean cordaConnected = cordaClientService != null && cordaClientService.isConnected();
+            status.put("corda", cordaConnected);
+            status.put("blockchain", blockchainService.isBlockchainAvailable());
+
+            return ResponseEntity.ok(status);
+        } catch (Exception e) {
+            status.put("alive", false);
+            status.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(status);
+        }
     }
 
     @GetMapping("/network-info")
     public ResponseEntity<Map<String, Object>> getNetworkInfo() {
-        Map<String, Object> info = blockchainService.getProviderInfo();
-        return ResponseEntity.ok(info);
+        try {
+            Map<String, Object> info = blockchainService.getProviderInfo();
+
+            // Add Corda-specific network info if available
+            if (cordaClientService != null && cordaClientService.isConnected()) {
+                try {
+                    Map<String, Object> cordaStats = cordaClientService.getNetworkStats();
+                    info.put("cordaNetworkStats", cordaStats);
+                } catch (Exception e) {
+                    logger.warn("Failed to get Corda network stats: {}", e.getMessage());
+                }
+            }
+
+            return ResponseEntity.ok(info);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(error);
+        }
     }
 }

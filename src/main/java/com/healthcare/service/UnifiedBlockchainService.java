@@ -17,7 +17,7 @@ public class UnifiedBlockchainService {
 
     private static final Logger logger = LoggerFactory.getLogger(UnifiedBlockchainService.class);
 
-    @Autowired
+    @Autowired(required = false)
     private CordaClientService cordaClientService;
 
     // Simulation variables for fallback mode
